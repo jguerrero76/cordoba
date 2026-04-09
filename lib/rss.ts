@@ -61,10 +61,11 @@ export const NEWS_SOURCES: NewsSource[] = [
   },
   {
     name: 'La Voz de Córdoba',
-    rssUrl: 'https://www.eldebate.com/espana/la-voz-de-cordoba/feed/',
+    rssUrl: 'https://www.lavozdecordoba.es/feed/',
     fallbackUrls: [
-      'https://www.eldebate.com/espana/la-voz-de-cordoba/rss.xml',
-      'https://www.eldebate.com/rss/espana/la-voz-de-cordoba/',
+      'https://lavozdecordoba.es/feed/',
+      'https://www.lavozdecordoba.es/?feed=rss2',
+      'https://lavozdecordoba.eldebate.com/feed/',
     ],
     color: '#047857',
     badgeClass: 'bg-emerald-700',
