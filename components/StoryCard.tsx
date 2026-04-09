@@ -125,7 +125,7 @@ export default function StoryCard({ item, index, isFirst, isSaved, onToggleSave 
 
       {/* ── Bottom content ── */}
       <div className="absolute bottom-0 left-0 right-16 z-10 px-5 pb-10 pt-4">
-        <h2 className="text-white text-[22px] font-bold leading-tight mb-2 drop-shadow-lg line-clamp-4">
+        <h2 className="text-white text-[22px] font-bold leading-tight mb-2 drop-shadow-lg">
           {item.title}
         </h2>
         {item.description && (
