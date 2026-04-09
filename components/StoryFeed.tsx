@@ -31,13 +31,18 @@ export default function StoryFeed({ allNews }: Props) {
   const touchStartY = useRef<number | null>(null);
   const swipeStartY = useRef<number | null>(null);
   const lastTouchY = useRef<number | null>(null);
+  // Refs for values read in event handlers (avoids stale closure with concurrent React)
+  const pullDistanceRef = useRef(0);
+  const visibleNewsLengthRef = useRef(0);
 
   // ── Hydrate from localStorage ──
   useEffect(() => {
     const seen = new Set<string>(JSON.parse(localStorage.getItem(SEEN_KEY) || '[]'));
     const saved = new Set<string>(JSON.parse(localStorage.getItem(SAVED_KEY) || '[]'));
     setSavedIds(saved);
-    setVisibleNews(allNews.filter((n) => !seen.has(n.id)));
+    const filtered = allNews.filter((n) => !seen.has(n.id));
+    visibleNewsLengthRef.current = filtered.length;
+    setVisibleNews(filtered);
     setReady(true);
   }, [allNews]);
 
@@ -83,15 +88,22 @@ export default function StoryFeed({ allNews }: Props) {
     return () => el.removeEventListener('scroll', onScroll);
   }, [ready]);
 
+  // Keep visibleNewsLengthRef in sync so touch handlers can read it without stale closure
+  useEffect(() => {
+    visibleNewsLengthRef.current = visibleNews.length;
+  }, [visibleNews]);
+
   // ── Pull-to-refresh (touch only) ──
+  // NOTE: pullDistance is intentionally NOT in deps — we use pullDistanceRef inside
+  // handlers to avoid stale closures with React 19 concurrent rendering.
   useEffect(() => {
     const el = containerRef.current;
-    if (!el) return;
+    if (!el || !ready) return;
 
     const onTouchStart = (e: TouchEvent) => {
       swipeStartY.current = e.touches[0].clientY;
       lastTouchY.current = e.touches[0].clientY;
-      // Only active on first card when already at the top
+      // Pull-down-to-refresh: only on first card when already at the top
       if (currentIndexRef.current === 0 && el.scrollTop <= 2) {
         touchStartY.current = e.touches[0].clientY;
       }
@@ -102,35 +114,45 @@ export default function StoryFeed({ allNews }: Props) {
       if (touchStartY.current === null) return;
       const dy = e.touches[0].clientY - touchStartY.current;
       if (dy > 0) {
-        // Resist the pull with a dampening factor so it feels elastic
-        setPullDistance(Math.min(dy * 0.45, PULL_THRESHOLD * 1.2));
+        const dist = Math.min(dy * 0.45, PULL_THRESHOLD * 1.2);
+        pullDistanceRef.current = dist;
+        setPullDistance(dist);
       }
     };
 
     const onTouchEnd = () => {
-      // Detect upward swipe → show transition loading indicator
-      if (swipeStartY.current !== null && lastTouchY.current !== null) {
-        const dy = lastTouchY.current - swipeStartY.current;
-        if (dy < -30) {
-          setTransitioning(true);
-          // Safety fallback in case IntersectionObserver doesn't fire
-          setTimeout(() => setTransitioning(false), 800);
-        }
+      const dy =
+        swipeStartY.current !== null && lastTouchY.current !== null
+          ? lastTouchY.current - swipeStartY.current
+          : 0;
+      const isOnLastCard =
+        currentIndexRef.current === visibleNewsLengthRef.current - 1;
+
+      // Swipe-up on last card → refresh (same as pull-to-refresh)
+      if (dy < -60 && isOnLastCard) {
+        setRefreshing(true);
+        router.refresh();
+        setTimeout(() => setRefreshing(false), 1800);
+      } else if (dy < -30 && !isOnLastCard) {
+        // Swiping to next card → brief loading overlay
+        setTransitioning(true);
+        setTimeout(() => setTransitioning(false), 800);
       }
+
       swipeStartY.current = null;
       lastTouchY.current = null;
 
-      if (touchStartY.current === null) return;
-      if (pullDistance >= PULL_THRESHOLD) {
-        setRefreshing(true);
+      // Pull-down-to-refresh from first card
+      if (touchStartY.current !== null) {
+        if (pullDistanceRef.current >= PULL_THRESHOLD) {
+          setRefreshing(true);
+          router.refresh();
+          setTimeout(() => setRefreshing(false), 1800);
+        }
+        pullDistanceRef.current = 0;
         setPullDistance(0);
-        router.refresh();
-        // Hide the refreshing indicator after a moment
-        setTimeout(() => setRefreshing(false), 1800);
-      } else {
-        setPullDistance(0);
+        touchStartY.current = null;
       }
-      touchStartY.current = null;
     };
 
     el.addEventListener('touchstart', onTouchStart, { passive: true });
@@ -141,7 +163,7 @@ export default function StoryFeed({ allNews }: Props) {
       el.removeEventListener('touchmove', onTouchMove);
       el.removeEventListener('touchend', onTouchEnd);
     };
-  }, [pullDistance, ready, router]);
+  }, [ready, router]);
 
   const toggleSave = useCallback((id: string) => {
     setSavedIds((prev) => {
@@ -159,6 +181,7 @@ export default function StoryFeed({ allNews }: Props) {
 
   const resetSeen = () => {
     localStorage.removeItem(SEEN_KEY);
+    visibleNewsLengthRef.current = allNews.length;
     setVisibleNews(allNews);
     currentIndexRef.current = 0;
     setCurrentIndex(0);

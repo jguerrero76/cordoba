@@ -152,8 +152,16 @@ export default function StoryCard({ item, index, isLast, isSaved, onToggleSave }
         )}
       </div>
 
-      {/* Swipe hint (all cards except last) */}
-      {!isLast && (
+      {/* Swipe hint */}
+      {isLast ? (
+        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-0.5 animate-bounce pointer-events-none">
+          <svg className="w-4 h-4 text-white/30" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round"
+              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          <span className="text-white/25 text-[10px] tracking-widest uppercase">Actualizar</span>
+        </div>
+      ) : (
         <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-0.5 animate-bounce pointer-events-none">
           <svg className="w-4 h-4 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
