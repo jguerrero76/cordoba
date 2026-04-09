@@ -77,7 +77,24 @@ export default function StoryCard({ item, index, isFirst, isSaved, onToggleSave 
       </div>
 
       {/* ── Right actions ── */}
-      <div className="absolute right-3 bottom-32 z-10 flex flex-col items-center gap-5">
+      <div className="absolute right-3 bottom-28 z-10 flex flex-col items-center gap-5">
+        {/* Read */}
+        <a
+          href={item.link}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Leer noticia completa"
+          className="flex flex-col items-center gap-1 active:scale-95 transition-transform"
+        >
+          <div className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-md border border-white/20 flex items-center justify-center">
+            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round"
+                d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
+          </div>
+          <span className="text-white/80 text-[11px] font-medium drop-shadow">Leer</span>
+        </a>
+
         {/* Save */}
         <button
           onClick={handleSave}
@@ -129,22 +146,10 @@ export default function StoryCard({ item, index, isFirst, isSaved, onToggleSave 
           {item.title}
         </h2>
         {item.description && (
-          <p className="text-white/65 text-sm leading-relaxed mb-4 line-clamp-2">
+          <p className="text-white/65 text-sm leading-relaxed line-clamp-2">
             {item.description}
           </p>
         )}
-        <a
-          href={item.link}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-white/95 text-black text-sm font-semibold rounded-full active:scale-95 transition-transform"
-        >
-          Leer noticia completa
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round"
-              d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-          </svg>
-        </a>
       </div>
 
       {/* Swipe hint (first card only) */}
