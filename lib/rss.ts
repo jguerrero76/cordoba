@@ -219,7 +219,7 @@ function mapItems(items: (Parser.Item & CustomItem)[], source: NewsSource): News
       ).slice(0, 250);
 
       return {
-        id: item.guid || item.link || `${source.name}-${index}-${Date.now()}`,
+        id: item.guid || item.link || `${source.name}-${index}`,
         title: stripHtml(item.title || 'Sin título'),
         description,
         link: item.link || '#',
@@ -252,14 +252,35 @@ async function fetchFeed(source: NewsSource): Promise<NewsItem[]> {
   return [];
 }
 
+function normalizeTitle(title: string): string {
+  return title
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // strip accents
+    .replace(/[^a-z0-9\s]/g, '')     // remove punctuation
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 export async function fetchAllNews(): Promise<NewsItem[]> {
   const results = await Promise.allSettled(NEWS_SOURCES.map(fetchFeed));
 
   const allNews: NewsItem[] = [];
+  const seenLinks = new Set<string>();
+  const seenTitles = new Set<string>();
+
   results.forEach((result) => {
-    if (result.status === 'fulfilled') {
-      allNews.push(...result.value);
-    }
+    if (result.status !== 'fulfilled') return;
+    result.value.forEach((item) => {
+      const linkKey = item.link.toLowerCase().trim();
+      const titleKey = normalizeTitle(item.title);
+
+      if (seenLinks.has(linkKey) || seenTitles.has(titleKey)) return;
+
+      seenLinks.add(linkKey);
+      seenTitles.add(titleKey);
+      allNews.push(item);
+    });
   });
 
   return allNews.sort((a, b) => {
