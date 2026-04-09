@@ -35,7 +35,7 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="bg-slate-50 text-gray-900">{children}</body>
+      <body className="bg-black text-white">{children}</body>
     </html>
   );
 }

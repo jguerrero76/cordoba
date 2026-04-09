@@ -4,54 +4,48 @@
 
 @layer base {
   html {
-    scroll-behavior: smooth;
+    height: 100%;
+    /* Prevent pull-to-refresh on iOS overscroll */
+    overscroll-behavior: none;
   }
-
   body {
-    @apply antialiased;
+    height: 100%;
+    overflow: hidden;
+    background: #000;
+    overscroll-behavior: none;
   }
 }
 
 @layer utilities {
-  .scrollbar-hide {
+  /* Full-viewport story frame (used for empty/loading states) */
+  .story-frame {
+    height: 100vh;
+    height: 100dvh;
+  }
+
+  /* Scrollable snap container */
+  .story-container {
+    height: 100vh;
+    height: 100dvh;
+    overflow-y: scroll;
+    scroll-snap-type: y mandatory;
+    /* Smooth snapping on iOS */
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    /* Hide scrollbar everywhere */
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
-  .scrollbar-hide::-webkit-scrollbar {
+  .story-container::-webkit-scrollbar {
     display: none;
   }
 
-  .line-clamp-2 {
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-
-  .line-clamp-3 {
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-}
-
-/* News ticker */
-.ticker-track {
-  display: flex;
-  width: max-content;
-  animation: ticker 50s linear infinite;
-}
-
-.ticker-track:hover {
-  animation-play-state: paused;
-}
-
-@keyframes ticker {
-  0% {
-    transform: translateX(0);
-  }
-  100% {
-    transform: translateX(-50%);
+  /* Individual story card */
+  .story-card {
+    height: 100vh;
+    height: 100dvh;
+    scroll-snap-align: start;
+    /* Force one card at a time, no skipping */
+    scroll-snap-stop: always;
   }
 }
