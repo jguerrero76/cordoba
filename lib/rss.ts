@@ -41,11 +41,10 @@ export const NEWS_SOURCES: NewsSource[] = [
   },
   {
     name: 'El Día de Córdoba',
-    rssUrl: 'https://eldiadecordoba.es/rss.xml',
+    rssUrl: 'https://eldiadecordoba.es/rss/',
     fallbackUrls: [
+      'https://www.eldiadecordoba.es/rss/',
       'https://eldiadecordoba.es/feed/',
-      'https://www.eldiadecordoba.es/feed/',
-      'https://eldiadecordoba.es/rss/',
     ],
     color: '#1D4ED8',
     badgeClass: 'bg-blue-700',
@@ -61,39 +60,25 @@ export const NEWS_SOURCES: NewsSource[] = [
     badgeClass: 'bg-amber-600',
   },
   {
-    name: 'ABC Córdoba',
-    rssUrl: 'https://www.abc.es/rss/feeds/abc_cordoba.xml',
-    fallbackUrls: [
-      'https://www.abc.es/espana/andalucia/cordoba/rss/',
-    ],
-    color: '#0F172A',
-    badgeClass: 'bg-slate-900',
-    // This RSS URL is the dedicated Córdoba section of ABC — all items are local
-    trustedLocal: true,
-  },
-  {
-    name: 'Cordópolis El Español',
-    rssUrl: 'https://cordopolis.elespanol.com/rss/',
-    fallbackUrls: [
-      'https://cordopolis.elespanol.com/feed/',
-      'https://cordopolis.elespanol.com/?feed=rss2',
-    ],
-    color: '#7C3AED',
-    badgeClass: 'bg-violet-700',
-    // Dedicated Córdoba section
-    trustedLocal: true,
-  },
-  {
     name: 'La Voz de Córdoba',
-    rssUrl: 'https://www.lavozdekordoba.com/feed/',
+    rssUrl: 'https://www.eldebate.com/espana/la-voz-de-cordoba/feed/',
     fallbackUrls: [
-      'https://lavozdekordoba.com/feed/',
-      'https://www.lavozdekordoba.com/rss/',
-      'https://lavozdekordoba.com/?feed=rss2',
+      'https://www.eldebate.com/espana/la-voz-de-cordoba/rss.xml',
+      'https://www.eldebate.com/rss/espana/la-voz-de-cordoba/',
     ],
     color: '#047857',
     badgeClass: 'bg-emerald-700',
-    // Dedicated local Córdoba newspaper
+    trustedLocal: true,
+  },
+  {
+    name: 'Córdoba Hoy',
+    rssUrl: 'https://www.cordobahoy.es/feed/',
+    fallbackUrls: [
+      'https://www.cordobahoy.es/rss/',
+      'https://www.cordobahoy.es/?feed=rss2',
+    ],
+    color: '#B45309',
+    badgeClass: 'bg-amber-700',
     trustedLocal: true,
   },
 ];
