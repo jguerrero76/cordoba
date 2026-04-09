@@ -23,11 +23,14 @@ export default function StoryFeed({ allNews }: Props) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [pullDistance, setPullDistance] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
+  const [transitioning, setTransitioning] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
   // Ref keeps currentIndex accessible in event handlers without stale closure
   const currentIndexRef = useRef(0);
   const touchStartY = useRef<number | null>(null);
+  const swipeStartY = useRef<number | null>(null);
+  const lastTouchY = useRef<number | null>(null);
 
   // ── Hydrate from localStorage ──
   useEffect(() => {
@@ -50,6 +53,7 @@ export default function StoryFeed({ allNews }: Props) {
           const id = entry.target.getAttribute('data-id') ?? '';
           currentIndexRef.current = idx;
           setCurrentIndex(idx);
+          setTransitioning(false);
           const seen = new Set<string>(JSON.parse(localStorage.getItem(SEEN_KEY) || '[]'));
           seen.add(id);
           localStorage.setItem(SEEN_KEY, JSON.stringify([...seen]));
@@ -85,6 +89,8 @@ export default function StoryFeed({ allNews }: Props) {
     if (!el) return;
 
     const onTouchStart = (e: TouchEvent) => {
+      swipeStartY.current = e.touches[0].clientY;
+      lastTouchY.current = e.touches[0].clientY;
       // Only active on first card when already at the top
       if (currentIndexRef.current === 0 && el.scrollTop <= 2) {
         touchStartY.current = e.touches[0].clientY;
@@ -92,6 +98,7 @@ export default function StoryFeed({ allNews }: Props) {
     };
 
     const onTouchMove = (e: TouchEvent) => {
+      lastTouchY.current = e.touches[0].clientY;
       if (touchStartY.current === null) return;
       const dy = e.touches[0].clientY - touchStartY.current;
       if (dy > 0) {
@@ -101,6 +108,18 @@ export default function StoryFeed({ allNews }: Props) {
     };
 
     const onTouchEnd = () => {
+      // Detect upward swipe → show transition loading indicator
+      if (swipeStartY.current !== null && lastTouchY.current !== null) {
+        const dy = lastTouchY.current - swipeStartY.current;
+        if (dy < -30) {
+          setTransitioning(true);
+          // Safety fallback in case IntersectionObserver doesn't fire
+          setTimeout(() => setTransitioning(false), 800);
+        }
+      }
+      swipeStartY.current = null;
+      lastTouchY.current = null;
+
       if (touchStartY.current === null) return;
       if (pullDistance >= PULL_THRESHOLD) {
         setRefreshing(true);
@@ -226,6 +245,14 @@ export default function StoryFeed({ allNews }: Props) {
         )}
       </div>
 
+      {/* Card transition loading overlay */}
+      {transitioning && (
+        <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm pointer-events-none">
+          <div className="w-9 h-9 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+          <p className="text-white/50 text-xs mt-3 tracking-wide">Cargando noticia...</p>
+        </div>
+      )}
+
       {/* Top progress bar */}
       <div className="fixed top-0 left-0 right-0 z-40 h-0.5 bg-white/15 pointer-events-none">
         <div
@@ -260,7 +287,7 @@ export default function StoryFeed({ allNews }: Props) {
             key={item.id}
             item={item}
             index={index}
-            isFirst={index === 0}
+            isLast={index === visibleNews.length - 1}
             isSaved={savedIds.has(item.id)}
             onToggleSave={() => toggleSave(item.id)}
           />

@@ -6,12 +6,12 @@ import { NewsItem } from '@/types/news';
 interface Props {
   item: NewsItem;
   index: number;
-  isFirst: boolean;
+  isLast: boolean;
   isSaved: boolean;
   onToggleSave: () => void;
 }
 
-export default function StoryCard({ item, index, isFirst, isSaved, onToggleSave }: Props) {
+export default function StoryCard({ item, index, isLast, isSaved, onToggleSave }: Props) {
   const [copied, setCopied] = useState(false);
   const [pulse, setPulse] = useState(false);
 
@@ -152,8 +152,8 @@ export default function StoryCard({ item, index, isFirst, isSaved, onToggleSave 
         )}
       </div>
 
-      {/* Swipe hint (first card only) */}
-      {isFirst && (
+      {/* Swipe hint (all cards except last) */}
+      {!isLast && (
         <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-0.5 animate-bounce pointer-events-none">
           <svg className="w-4 h-4 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
