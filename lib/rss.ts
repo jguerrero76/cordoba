@@ -69,6 +69,8 @@ export const NEWS_SOURCES: NewsSource[] = [
     ],
     color: '#0F172A',
     badgeClass: 'bg-slate-900',
+    // This RSS URL is the dedicated Córdoba section of ABC — all items are local
+    trustedLocal: true,
   },
   {
     name: 'Cordópolis El Español',
@@ -79,6 +81,8 @@ export const NEWS_SOURCES: NewsSource[] = [
     ],
     color: '#7C3AED',
     badgeClass: 'bg-violet-700',
+    // Dedicated Córdoba section
+    trustedLocal: true,
   },
   {
     name: 'La Voz de Córdoba',
@@ -90,6 +94,8 @@ export const NEWS_SOURCES: NewsSource[] = [
     ],
     color: '#047857',
     badgeClass: 'bg-emerald-700',
+    // Dedicated local Córdoba newspaper
+    trustedLocal: true,
   },
 ];
 
@@ -198,13 +204,13 @@ function mapItems(items: (Parser.Item & CustomItem)[], source: NewsSource): News
   return (items || [])
     .filter((item) => {
       const dateStr = item.pubDate || item.isoDate;
-      return (
-        isPublishedToday(dateStr) &&
-        isLocalCordobaNews(
-          item.title || '',
-          item.contentSnippet || item.content || '',
-          item.categories || []
-        )
+      if (!isPublishedToday(dateStr)) return false;
+      // For dedicated Córdoba section feeds, trust the source and skip the text filter
+      if (source.trustedLocal) return true;
+      return isLocalCordobaNews(
+        item.title || '',
+        item.contentSnippet || item.content || '',
+        item.categories || []
       );
     })
     .slice(0, 30)

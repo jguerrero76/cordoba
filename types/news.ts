@@ -17,4 +17,7 @@ export interface NewsSource {
   fallbackUrls?: string[];
   color: string;
   badgeClass: string;
+  /** When true, all articles from this feed are assumed to be local Córdoba news
+   *  and skip the keyword/category filter. Use only for dedicated Córdoba sections. */
+  trustedLocal?: boolean;
 }
