@@ -148,30 +148,71 @@ function formatDate(dateStr?: string): string {
   }
 }
 
-function mapItems(items: (Parser.Item & CustomItem)[], source: NewsSource): NewsItem[] {
-  return (items || []).slice(0, 20).map((item, index) => {
-    const rawDate = item.pubDate || item.isoDate || new Date().toISOString();
-    const description = stripHtml(
-      item.contentSnippet ||
-      (item as unknown as { summary?: string }).summary ||
-      item.contentEncoded ||
-      item.content ||
-      ''
-    ).slice(0, 250);
+// Terms that identify a Córdoba-capital article
+const LOCAL_TERMS = [
+  'córdoba',
+  'cordoba',
+  'cordobés',
+  'cordobesa',
+  'cordobeses',
+  'cordobesas',
+  'mezquita-catedral',
+  'mezquita catedral',
+  'medina azahara',
+  'medina-azahara',
+  'alcázar de los reyes',
+  'córdoba cf',
+  'capital cordobesa',
+  'casco histórico',
+];
 
-    return {
-      id: item.guid || item.link || `${source.name}-${index}-${Date.now()}`,
-      title: stripHtml(item.title || 'Sin título'),
-      description,
-      link: item.link || '#',
-      pubDate: rawDate,
-      formattedDate: formatDate(rawDate),
-      source: source.name,
-      sourceColor: source.color,
-      badgeClass: source.badgeClass,
-      imageUrl: extractImage(item as CustomItem & Record<string, unknown>),
-    };
-  });
+function isLocalCordobaNews(
+  title: string,
+  description: string,
+  link: string,
+  categories: string[]
+): boolean {
+  const text = `${title} ${description} ${link}`.toLowerCase();
+  if (LOCAL_TERMS.some((term) => text.includes(term))) return true;
+  // Also accept via RSS category tags
+  const cats = categories.map((c) => c.toLowerCase());
+  return cats.some((c) => c.includes('córdoba') || c.includes('cordoba') || c === 'local' || c === 'ciudad');
+}
+
+function mapItems(items: (Parser.Item & CustomItem)[], source: NewsSource): NewsItem[] {
+  return (items || [])
+    .filter((item) =>
+      isLocalCordobaNews(
+        item.title || '',
+        item.contentSnippet || item.content || '',
+        item.link || '',
+        item.categories || []
+      )
+    )
+    .slice(0, 30)
+    .map((item, index) => {
+      const rawDate = item.pubDate || item.isoDate || new Date().toISOString();
+      const description = stripHtml(
+        item.contentSnippet ||
+        (item as unknown as { summary?: string }).summary ||
+        item.contentEncoded ||
+        item.content ||
+        ''
+      ).slice(0, 250);
+
+      return {
+        id: item.guid || item.link || `${source.name}-${index}-${Date.now()}`,
+        title: stripHtml(item.title || 'Sin título'),
+        description,
+        link: item.link || '#',
+        pubDate: rawDate,
+        formattedDate: formatDate(rawDate),
+        source: source.name,
+        sourceColor: source.color,
+        badgeClass: source.badgeClass,
+        imageUrl: extractImage(item as CustomItem & Record<string, unknown>),
+      };
+    });
 }
 
 async function fetchFeed(source: NewsSource): Promise<NewsItem[]> {
