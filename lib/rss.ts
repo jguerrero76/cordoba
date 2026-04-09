@@ -169,10 +169,12 @@ const LOCAL_TERMS = [
 function isLocalCordobaNews(
   title: string,
   description: string,
-  link: string,
   categories: string[]
 ): boolean {
-  const text = `${title} ${description} ${link}`.toLowerCase();
+  // Only check title and description — never the URL, which always contains
+  // the newspaper's domain name (e.g. "diariocordoba.com") and would pass
+  // every article regardless of its actual content.
+  const text = `${title} ${description}`.toLowerCase();
   if (LOCAL_TERMS.some((term) => text.includes(term))) return true;
   // Also accept via RSS category tags
   const cats = categories.map((c) => c.toLowerCase());
@@ -201,7 +203,6 @@ function mapItems(items: (Parser.Item & CustomItem)[], source: NewsSource): News
         isLocalCordobaNews(
           item.title || '',
           item.contentSnippet || item.content || '',
-          item.link || '',
           item.categories || []
         )
       );
