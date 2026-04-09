@@ -10,6 +10,15 @@ type CustomItem = {
   enclosure?: { url?: string; type?: string };
 };
 
+// Browser-like headers to avoid being blocked by news sites
+const HEADERS = {
+  'User-Agent':
+    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+  Accept: 'application/rss+xml, application/atom+xml, application/xml, text/xml, */*',
+  'Accept-Language': 'es-ES,es;q=0.9,en;q=0.8',
+  'Cache-Control': 'no-cache',
+};
+
 const parser = new Parser<Record<string, unknown>, CustomItem>({
   customFields: {
     item: [
@@ -18,41 +27,67 @@ const parser = new Parser<Record<string, unknown>, CustomItem>({
       ['content:encoded', 'contentEncoded'],
     ],
   },
-  timeout: 10000,
-  headers: {
-    'User-Agent': 'Mozilla/5.0 (compatible; CordobaNoticias/1.0; +https://github.com/jguerrero76/cordoba)',
-    'Accept': 'application/rss+xml, application/xml, text/xml, */*',
-  },
+  timeout: 12000,
+  headers: HEADERS,
 });
 
 export const NEWS_SOURCES: NewsSource[] = [
   {
     name: 'Diario Córdoba',
     rssUrl: 'https://www.diariocordoba.com/rss/',
+    fallbackUrls: ['https://www.diariocordoba.com/noticias/cordoba/rss/'],
     color: '#C41230',
     badgeClass: 'bg-red-700',
   },
   {
     name: 'El Día de Córdoba',
-    rssUrl: 'https://eldiadecordoba.es/feed/',
+    rssUrl: 'https://eldiadecordoba.es/rss.xml',
+    fallbackUrls: [
+      'https://eldiadecordoba.es/feed/',
+      'https://www.eldiadecordoba.es/feed/',
+      'https://eldiadecordoba.es/rss/',
+    ],
     color: '#1A56DB',
     badgeClass: 'bg-blue-700',
   },
   {
     name: 'ABC Córdoba',
     rssUrl: 'https://www.abc.es/rss/feeds/abc_cordoba.xml',
+    fallbackUrls: [
+      'https://www.abc.es/espana/andalucia/cordoba/rss/',
+      'https://www.abc.es/rss/feeds/abc_espana.xml',
+    ],
     color: '#1E293B',
     badgeClass: 'bg-slate-800',
   },
   {
-    name: 'Cordópolis',
+    name: 'Cordópolis (El Español)',
     rssUrl: 'https://cordopolis.elespanol.com/rss/',
-    color: '#6D28D9',
-    badgeClass: 'bg-violet-700',
+    fallbackUrls: [
+      'https://cordopolis.elespanol.com/feed/',
+      'https://cordopolis.elespanol.com/?feed=rss2',
+    ],
+    color: '#7C2D92',
+    badgeClass: 'bg-purple-800',
+  },
+  {
+    name: 'Cordópolis (El Diario)',
+    rssUrl: 'https://cordopolis.eldiario.es/rss/',
+    fallbackUrls: [
+      'https://www.eldiario.es/andalucia/cordoba/rss/',
+      'https://cordopolis.eldiario.es/feed/',
+    ],
+    color: '#DC2626',
+    badgeClass: 'bg-red-600',
   },
   {
     name: 'La Voz de Córdoba',
     rssUrl: 'https://www.lavozdekordoba.com/feed/',
+    fallbackUrls: [
+      'https://lavozdekordoba.com/feed/',
+      'https://www.lavozdekordoba.com/rss/',
+      'https://lavozdekordoba.com/?feed=rss2',
+    ],
     color: '#047857',
     badgeClass: 'bg-emerald-700',
   },
@@ -113,36 +148,49 @@ function formatDate(dateStr?: string): string {
   }
 }
 
-async function fetchFeed(source: NewsSource): Promise<NewsItem[]> {
-  try {
-    const feed = await parser.parseURL(source.rssUrl);
-    return (feed.items || []).slice(0, 20).map((item, index) => {
-      const rawDate = item.pubDate || item.isoDate || new Date().toISOString();
-      const description = stripHtml(
-        item.contentSnippet ||
-        (item as unknown as { summary?: string }).summary ||
-        item.contentEncoded ||
-        item.content ||
-        ''
-      ).slice(0, 250);
+function mapItems(items: (Parser.Item & CustomItem)[], source: NewsSource): NewsItem[] {
+  return (items || []).slice(0, 20).map((item, index) => {
+    const rawDate = item.pubDate || item.isoDate || new Date().toISOString();
+    const description = stripHtml(
+      item.contentSnippet ||
+      (item as unknown as { summary?: string }).summary ||
+      item.contentEncoded ||
+      item.content ||
+      ''
+    ).slice(0, 250);
 
-      return {
-        id: item.guid || item.link || `${source.name}-${index}-${Date.now()}`,
-        title: stripHtml(item.title || 'Sin título'),
-        description,
-        link: item.link || '#',
-        pubDate: rawDate,
-        formattedDate: formatDate(rawDate),
-        source: source.name,
-        sourceColor: source.color,
-        badgeClass: source.badgeClass,
-        imageUrl: extractImage(item as CustomItem & Record<string, unknown>),
-      };
-    });
-  } catch (error) {
-    console.error(`[RSS] Error fetching "${source.name}": ${(error as Error).message}`);
-    return [];
+    return {
+      id: item.guid || item.link || `${source.name}-${index}-${Date.now()}`,
+      title: stripHtml(item.title || 'Sin título'),
+      description,
+      link: item.link || '#',
+      pubDate: rawDate,
+      formattedDate: formatDate(rawDate),
+      source: source.name,
+      sourceColor: source.color,
+      badgeClass: source.badgeClass,
+      imageUrl: extractImage(item as CustomItem & Record<string, unknown>),
+    };
+  });
+}
+
+async function fetchFeed(source: NewsSource): Promise<NewsItem[]> {
+  const urlsToTry = [source.rssUrl, ...(source.fallbackUrls ?? [])];
+
+  for (const url of urlsToTry) {
+    try {
+      const feed = await parser.parseURL(url);
+      if (feed.items?.length) {
+        console.log(`[RSS] OK "${source.name}" (${url}) — ${feed.items.length} items`);
+        return mapItems(feed.items, source);
+      }
+    } catch (error) {
+      console.warn(`[RSS] FAIL "${source.name}" (${url}): ${(error as Error).message}`);
+    }
   }
+
+  console.error(`[RSS] All URLs failed for "${source.name}"`);
+  return [];
 }
 
 export async function fetchAllNews(): Promise<NewsItem[]> {

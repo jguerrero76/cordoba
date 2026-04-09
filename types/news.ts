@@ -14,6 +14,7 @@ export interface NewsItem {
 export interface NewsSource {
   name: string;
   rssUrl: string;
+  fallbackUrls?: string[];
   color: string;
   badgeClass: string;
 }
