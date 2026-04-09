@@ -1,26 +1,35 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { NewsItem } from '@/types/news';
 import StoryCard from './StoryCard';
 import SavedDrawer from './SavedDrawer';
 
 const SEEN_KEY = 'cordoba_seen';
 const SAVED_KEY = 'cordoba_saved';
+const PULL_THRESHOLD = 75; // px needed to trigger refresh
 
 interface Props {
   allNews: NewsItem[];
 }
 
 export default function StoryFeed({ allNews }: Props) {
+  const router = useRouter();
   const [visibleNews, setVisibleNews] = useState<NewsItem[]>([]);
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   const [currentIndex, setCurrentIndex] = useState(0);
   const [ready, setReady] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [pullDistance, setPullDistance] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
 
-  // Hydrate from localStorage
+  const containerRef = useRef<HTMLDivElement>(null);
+  // Ref keeps currentIndex accessible in event handlers without stale closure
+  const currentIndexRef = useRef(0);
+  const touchStartY = useRef<number | null>(null);
+
+  // ── Hydrate from localStorage ──
   useEffect(() => {
     const seen = new Set<string>(JSON.parse(localStorage.getItem(SEEN_KEY) || '[]'));
     const saved = new Set<string>(JSON.parse(localStorage.getItem(SAVED_KEY) || '[]'));
@@ -29,7 +38,7 @@ export default function StoryFeed({ allNews }: Props) {
     setReady(true);
   }, [allNews]);
 
-  // Track visible card + mark as seen via IntersectionObserver
+  // ── Track visible card + mark as seen ──
   useEffect(() => {
     if (!ready || !containerRef.current) return;
 
@@ -39,6 +48,7 @@ export default function StoryFeed({ allNews }: Props) {
           if (!entry.isIntersecting) return;
           const idx = Number(entry.target.getAttribute('data-index'));
           const id = entry.target.getAttribute('data-id') ?? '';
+          currentIndexRef.current = idx;
           setCurrentIndex(idx);
           const seen = new Set<string>(JSON.parse(localStorage.getItem(SEEN_KEY) || '[]'));
           seen.add(id);
@@ -52,6 +62,68 @@ export default function StoryFeed({ allNews }: Props) {
     return () => observer.disconnect();
   }, [visibleNews, ready]);
 
+  // ── Prevent scrolling back to already-seen cards ──
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const onScroll = () => {
+      const minTop = currentIndexRef.current * el.clientHeight;
+      if (el.scrollTop < minTop - 4) {
+        // Snap back instantly — no animation so the user doesn't see a jump
+        el.scrollTop = minTop;
+      }
+    };
+
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => el.removeEventListener('scroll', onScroll);
+  }, [ready]);
+
+  // ── Pull-to-refresh (touch only) ──
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const onTouchStart = (e: TouchEvent) => {
+      // Only active on first card when already at the top
+      if (currentIndexRef.current === 0 && el.scrollTop <= 2) {
+        touchStartY.current = e.touches[0].clientY;
+      }
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (touchStartY.current === null) return;
+      const dy = e.touches[0].clientY - touchStartY.current;
+      if (dy > 0) {
+        // Resist the pull with a dampening factor so it feels elastic
+        setPullDistance(Math.min(dy * 0.45, PULL_THRESHOLD * 1.2));
+      }
+    };
+
+    const onTouchEnd = () => {
+      if (touchStartY.current === null) return;
+      if (pullDistance >= PULL_THRESHOLD) {
+        setRefreshing(true);
+        setPullDistance(0);
+        router.refresh();
+        // Hide the refreshing indicator after a moment
+        setTimeout(() => setRefreshing(false), 1800);
+      } else {
+        setPullDistance(0);
+      }
+      touchStartY.current = null;
+    };
+
+    el.addEventListener('touchstart', onTouchStart, { passive: true });
+    el.addEventListener('touchmove', onTouchMove, { passive: true });
+    el.addEventListener('touchend', onTouchEnd);
+    return () => {
+      el.removeEventListener('touchstart', onTouchStart);
+      el.removeEventListener('touchmove', onTouchMove);
+      el.removeEventListener('touchend', onTouchEnd);
+    };
+  }, [pullDistance, ready, router]);
+
   const toggleSave = useCallback((id: string) => {
     setSavedIds((prev) => {
       const next = new Set(prev);
@@ -61,7 +133,6 @@ export default function StoryFeed({ allNews }: Props) {
     });
   }, []);
 
-  // Build the saved items list from allNews (preserves full article data)
   const savedItems = useMemo(
     () => allNews.filter((n) => savedIds.has(n.id)),
     [allNews, savedIds]
@@ -70,9 +141,14 @@ export default function StoryFeed({ allNews }: Props) {
   const resetSeen = () => {
     localStorage.removeItem(SEEN_KEY);
     setVisibleNews(allNews);
+    currentIndexRef.current = 0;
     setCurrentIndex(0);
-    containerRef.current?.scrollTo({ top: 0 });
+    if (containerRef.current) containerRef.current.scrollTop = 0;
   };
+
+  // ── Pull indicator ──
+  const pullProgress = Math.min(pullDistance / PULL_THRESHOLD, 1);
+  const circumference = 2 * Math.PI * 10; // circle r=10
 
   if (!ready) {
     return (
@@ -95,7 +171,7 @@ export default function StoryFeed({ allNews }: Props) {
           <div>
             <p className="text-white text-2xl font-bold mb-2">¡Al día!</p>
             <p className="text-white/50 text-sm">Has visto todas las noticias disponibles.</p>
-            <p className="text-white/40 text-sm mt-1">Vuelve más tarde para nuevas noticias.</p>
+            <p className="text-white/40 text-sm mt-1">Desliza hacia abajo para buscar nuevas noticias.</p>
           </div>
           <div className="flex flex-col gap-3 w-full max-w-xs">
             {savedItems.length > 0 && (
@@ -117,28 +193,48 @@ export default function StoryFeed({ allNews }: Props) {
             </button>
           </div>
         </div>
-
-        <SavedDrawer
-          open={drawerOpen}
-          onClose={() => setDrawerOpen(false)}
-          savedItems={savedItems}
-          onRemove={toggleSave}
-        />
+        <SavedDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)}
+          savedItems={savedItems} onRemove={toggleSave} />
       </>
     );
   }
 
   return (
     <>
+      {/* Pull-to-refresh indicator */}
+      <div
+        className="fixed top-0 left-0 right-0 z-50 flex flex-col items-center pointer-events-none transition-all duration-150"
+        style={{ transform: `translateY(${pullDistance > 0 ? pullDistance - 28 : -28}px)` }}
+      >
+        {refreshing ? (
+          <div className="w-7 h-7 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+        ) : (
+          <svg width="28" height="28" viewBox="0 0 28 28">
+            <circle cx="14" cy="14" r="10" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="2.5" />
+            <circle
+              cx="14" cy="14" r="10"
+              fill="none" stroke="white" strokeWidth="2.5"
+              strokeDasharray={circumference}
+              strokeDashoffset={circumference * (1 - pullProgress)}
+              strokeLinecap="round"
+              transform="rotate(-90 14 14)"
+            />
+          </svg>
+        )}
+        {!refreshing && pullProgress >= 1 && (
+          <span className="text-white/70 text-[10px] mt-1">Suelta para actualizar</span>
+        )}
+      </div>
+
       {/* Top progress bar */}
-      <div className="fixed top-0 left-0 right-0 z-50 h-0.5 bg-white/15 pointer-events-none">
+      <div className="fixed top-0 left-0 right-0 z-40 h-0.5 bg-white/15 pointer-events-none">
         <div
           className="h-full bg-white transition-all duration-300 ease-out"
           style={{ width: `${((currentIndex + 1) / visibleNews.length) * 100}%` }}
         />
       </div>
 
-      {/* Saved articles button (top-right) */}
+      {/* Saved button */}
       <button
         onClick={() => setDrawerOpen(true)}
         aria-label="Ver noticias guardadas"
@@ -147,9 +243,7 @@ export default function StoryFeed({ allNews }: Props) {
         <svg
           className={`w-4 h-4 ${savedItems.length > 0 ? 'text-yellow-400' : 'text-white/50'}`}
           fill={savedItems.length > 0 ? 'currentColor' : 'none'}
-          stroke="currentColor"
-          strokeWidth={2}
-          viewBox="0 0 24 24"
+          stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"
         >
           <path strokeLinecap="round" strokeLinejoin="round"
             d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
@@ -159,7 +253,7 @@ export default function StoryFeed({ allNews }: Props) {
         )}
       </button>
 
-      {/* Story feed */}
+      {/* Feed */}
       <div ref={containerRef} className="story-container">
         {visibleNews.map((item, index) => (
           <StoryCard
@@ -180,13 +274,8 @@ export default function StoryFeed({ allNews }: Props) {
         </span>
       </div>
 
-      {/* Saved drawer */}
-      <SavedDrawer
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        savedItems={savedItems}
-        onRemove={toggleSave}
-      />
+      <SavedDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)}
+        savedItems={savedItems} onRemove={toggleSave} />
     </>
   );
 }
