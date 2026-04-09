@@ -1,6 +1,6 @@
 import Parser from 'rss-parser';
 import { NewsItem, NewsSource } from '@/types/news';
-import { format } from 'date-fns';
+import { format, isToday, isYesterday } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 type CustomItem = {
@@ -179,16 +179,33 @@ function isLocalCordobaNews(
   return cats.some((c) => c.includes('córdoba') || c.includes('cordoba') || c === 'local' || c === 'ciudad');
 }
 
+function isPublishedToday(dateStr?: string): boolean {
+  if (!dateStr) return false;
+  try {
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return false;
+    // Accept today. If the feed hasn't updated yet (e.g. early morning),
+    // also accept yesterday so the feed is never completely empty.
+    return isToday(date) || isYesterday(date);
+  } catch {
+    return false;
+  }
+}
+
 function mapItems(items: (Parser.Item & CustomItem)[], source: NewsSource): NewsItem[] {
   return (items || [])
-    .filter((item) =>
-      isLocalCordobaNews(
-        item.title || '',
-        item.contentSnippet || item.content || '',
-        item.link || '',
-        item.categories || []
-      )
-    )
+    .filter((item) => {
+      const dateStr = item.pubDate || item.isoDate;
+      return (
+        isPublishedToday(dateStr) &&
+        isLocalCordobaNews(
+          item.title || '',
+          item.contentSnippet || item.content || '',
+          item.link || '',
+          item.categories || []
+        )
+      );
+    })
     .slice(0, 30)
     .map((item, index) => {
       const rawDate = item.pubDate || item.isoDate || new Date().toISOString();
