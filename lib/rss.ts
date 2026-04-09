@@ -1,6 +1,6 @@
 import Parser from 'rss-parser';
 import { NewsItem, NewsSource } from '@/types/news';
-import { format, isToday, isYesterday } from 'date-fns';
+import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 type CustomItem = {
@@ -65,7 +65,6 @@ export const NEWS_SOURCES: NewsSource[] = [
     rssUrl: 'https://www.abc.es/rss/feeds/abc_cordoba.xml',
     fallbackUrls: [
       'https://www.abc.es/espana/andalucia/cordoba/rss/',
-      'https://www.abc.es/rss/feeds/abc_espana.xml',
     ],
     color: '#0F172A',
     badgeClass: 'bg-slate-900',
@@ -187,14 +186,15 @@ function isLocalCordobaNews(
   return cats.some((c) => c.includes('córdoba') || c.includes('cordoba') || c === 'local' || c === 'ciudad');
 }
 
-function isPublishedToday(dateStr?: string): boolean {
+function isRecentNews(dateStr?: string): boolean {
   if (!dateStr) return false;
   try {
     const date = new Date(dateStr);
     if (isNaN(date.getTime())) return false;
-    // Accept today. If the feed hasn't updated yet (e.g. early morning),
-    // also accept yesterday so the feed is never completely empty.
-    return isToday(date) || isYesterday(date);
+    // Accept today + last 2 days so the feed is never empty on weekends
+    // or when feeds are slow to update.
+    const msAgo = Date.now() - date.getTime();
+    return msAgo >= 0 && msAgo < 3 * 24 * 60 * 60 * 1000;
   } catch {
     return false;
   }
@@ -204,7 +204,7 @@ function mapItems(items: (Parser.Item & CustomItem)[], source: NewsSource): News
   return (items || [])
     .filter((item) => {
       const dateStr = item.pubDate || item.isoDate;
-      if (!isPublishedToday(dateStr)) return false;
+      if (!isRecentNews(dateStr)) return false;
       // For dedicated Córdoba section feeds, trust the source and skip the text filter
       if (source.trustedLocal) return true;
       return isLocalCordobaNews(
