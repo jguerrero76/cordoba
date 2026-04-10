@@ -11,6 +11,18 @@ export interface NewsItem {
   imageUrl?: string;
 }
 
+export interface UserPrefs {
+  hiddenSources: string[];   // source names the user has disabled
+  onlyWithImage: boolean;    // hide articles without a photo
+  textSize: 'normal' | 'large'; // title font size
+}
+
+export const DEFAULT_PREFS: UserPrefs = {
+  hiddenSources: [],
+  onlyWithImage: false,
+  textSize: 'normal',
+};
+
 export interface NewsSource {
   name: string;
   rssUrl: string;

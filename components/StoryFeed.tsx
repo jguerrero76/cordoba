@@ -2,12 +2,14 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { NewsItem } from '@/types/news';
+import { NewsItem, UserPrefs, DEFAULT_PREFS } from '@/types/news';
 import StoryCard from './StoryCard';
 import SavedDrawer from './SavedDrawer';
+import SettingsModal from './SettingsModal';
 
 const SEEN_KEY = 'cordoba_seen';
 const SAVED_KEY = 'cordoba_saved';
+const PREFS_KEY = 'cordoba_prefs';
 const PULL_THRESHOLD = 75; // px needed to trigger refresh
 
 interface Props {
@@ -21,6 +23,8 @@ export default function StoryFeed({ allNews }: Props) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [ready, setReady] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [prefs, setPrefs] = useState<UserPrefs>(DEFAULT_PREFS);
   const [pullDistance, setPullDistance] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const [transitioning, setTransitioning] = useState(false);
@@ -39,7 +43,9 @@ export default function StoryFeed({ allNews }: Props) {
   useEffect(() => {
     const seen = new Set<string>(JSON.parse(localStorage.getItem(SEEN_KEY) || '[]'));
     const saved = new Set<string>(JSON.parse(localStorage.getItem(SAVED_KEY) || '[]'));
+    const savedPrefs: UserPrefs = { ...DEFAULT_PREFS, ...JSON.parse(localStorage.getItem(PREFS_KEY) || '{}') };
     setSavedIds(saved);
+    setPrefs(savedPrefs);
     const filtered = allNews.filter((n) => !seen.has(n.id));
     visibleNewsLengthRef.current = filtered.length;
     setVisibleNews(filtered);
@@ -69,7 +75,7 @@ export default function StoryFeed({ allNews }: Props) {
 
     containerRef.current.querySelectorAll('[data-index]').forEach((el) => observer.observe(el));
     return () => observer.disconnect();
-  }, [visibleNews, ready]);
+  }, [visibleNews, prefs, ready]);
 
   // ── Prevent scrolling back to already-seen cards ──
   useEffect(() => {
@@ -88,10 +94,7 @@ export default function StoryFeed({ allNews }: Props) {
     return () => el.removeEventListener('scroll', onScroll);
   }, [ready]);
 
-  // Keep visibleNewsLengthRef in sync so touch handlers can read it without stale closure
-  useEffect(() => {
-    visibleNewsLengthRef.current = visibleNews.length;
-  }, [visibleNews]);
+  // visibleNewsLengthRef is kept in sync with displayedNews below
 
   // ── Pull-to-refresh (touch only) ──
   // NOTE: pullDistance is intentionally NOT in deps — we use pullDistanceRef inside
@@ -179,6 +182,28 @@ export default function StoryFeed({ allNews }: Props) {
     [allNews, savedIds]
   );
 
+  // Apply user preferences on top of the unseen list
+  const displayedNews = useMemo(() => {
+    return visibleNews.filter((n) => {
+      if (prefs.hiddenSources.includes(n.source)) return false;
+      if (prefs.onlyWithImage && !n.imageUrl) return false;
+      return true;
+    });
+  }, [visibleNews, prefs]);
+
+  // Keep the ref in sync with displayedNews length for touch handlers
+  useEffect(() => {
+    visibleNewsLengthRef.current = displayedNews.length;
+  }, [displayedNews]);
+
+  const updatePrefs = useCallback((update: Partial<UserPrefs>) => {
+    setPrefs((prev) => {
+      const next = { ...prev, ...update };
+      localStorage.setItem(PREFS_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
   const resetSeen = () => {
     localStorage.removeItem(SEEN_KEY);
     visibleNewsLengthRef.current = allNews.length;
@@ -200,7 +225,7 @@ export default function StoryFeed({ allNews }: Props) {
     );
   }
 
-  if (visibleNews.length === 0) {
+  if (displayedNews.length === 0) {
     const readToday = allNews.length;
     const isEmpty = readToday === 0;
 
@@ -356,39 +381,55 @@ export default function StoryFeed({ allNews }: Props) {
       <div className="fixed top-0 left-0 right-0 z-40 h-0.5 bg-white/15 pointer-events-none">
         <div
           className="h-full bg-white transition-all duration-300 ease-out"
-          style={{ width: `${((currentIndex + 1) / visibleNews.length) * 100}%` }}
+          style={{ width: `${((currentIndex + 1) / displayedNews.length) * 100}%` }}
         />
       </div>
 
-      {/* Saved button */}
-      <button
-        onClick={() => setDrawerOpen(true)}
-        aria-label="Ver noticias guardadas"
-        className="fixed top-3 right-4 z-50 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/50 backdrop-blur-md border border-white/15 active:scale-95 transition-transform"
-      >
-        <svg
-          className={`w-4 h-4 ${savedItems.length > 0 ? 'text-yellow-400' : 'text-white/50'}`}
-          fill={savedItems.length > 0 ? 'currentColor' : 'none'}
-          stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"
+      {/* Top-right buttons */}
+      <div className="fixed top-3 right-4 z-50 flex items-center gap-2">
+        {/* Settings */}
+        <button
+          onClick={() => setSettingsOpen(true)}
+          aria-label="Ajustes"
+          className="w-9 h-9 rounded-full bg-black/50 backdrop-blur-md border border-white/15 flex items-center justify-center active:scale-95 transition-transform"
         >
-          <path strokeLinecap="round" strokeLinejoin="round"
-            d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-        </svg>
-        {savedItems.length > 0 && (
-          <span className="text-yellow-400 text-xs font-bold tabular-nums">{savedItems.length}</span>
-        )}
-      </button>
+          <svg className="w-4 h-4 text-white/60" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round"
+              d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        </button>
+        {/* Saved */}
+        <button
+          onClick={() => setDrawerOpen(true)}
+          aria-label="Ver noticias guardadas"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/50 backdrop-blur-md border border-white/15 active:scale-95 transition-transform"
+        >
+          <svg
+            className={`w-4 h-4 ${savedItems.length > 0 ? 'text-yellow-400' : 'text-white/50'}`}
+            fill={savedItems.length > 0 ? 'currentColor' : 'none'}
+            stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round"
+              d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+          </svg>
+          {savedItems.length > 0 && (
+            <span className="text-yellow-400 text-xs font-bold tabular-nums">{savedItems.length}</span>
+          )}
+        </button>
+      </div>
 
       {/* Feed */}
       <div ref={containerRef} className="story-container">
-        {visibleNews.map((item, index) => (
+        {displayedNews.map((item, index) => (
           <StoryCard
             key={item.id}
             item={item}
             index={index}
-            isLast={index === visibleNews.length - 1}
+            isLast={index === displayedNews.length - 1}
             isSaved={savedIds.has(item.id)}
             onToggleSave={() => toggleSave(item.id)}
+            textSize={prefs.textSize}
           />
         ))}
       </div>
@@ -396,12 +437,20 @@ export default function StoryFeed({ allNews }: Props) {
       {/* Counter */}
       <div className="fixed bottom-5 left-4 z-50 pointer-events-none">
         <span className="text-white/40 text-xs tabular-nums">
-          {currentIndex + 1} / {visibleNews.length}
+          {currentIndex + 1} / {displayedNews.length}
         </span>
       </div>
 
       <SavedDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)}
         savedItems={savedItems} onRemove={toggleSave} />
+      <SettingsModal
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        prefs={prefs}
+        onPrefsChange={updatePrefs}
+        onResetSeen={resetSeen}
+        readToday={allNews.length - visibleNews.length}
+      />
     </>
   );
 }

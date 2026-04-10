@@ -9,6 +9,7 @@ interface Props {
   isLast: boolean;
   isSaved: boolean;
   onToggleSave: () => void;
+  textSize?: 'normal' | 'large';
 }
 
 function timeAgo(pubDate: string): string {
@@ -24,7 +25,7 @@ function timeAgo(pubDate: string): string {
   }
 }
 
-export default function StoryCard({ item, index, isLast, isSaved, onToggleSave }: Props) {
+export default function StoryCard({ item, index, isLast, isSaved, onToggleSave, textSize = 'normal' }: Props) {
   const [copied, setCopied] = useState(false);
   const [pulse, setPulse] = useState(false);
 
@@ -158,7 +159,7 @@ export default function StoryCard({ item, index, isLast, isSaved, onToggleSave }
         <h2
           className="text-white font-black leading-tight mb-2.5"
           style={{
-            fontSize: 'clamp(20px, 5.5vw, 26px)',
+            fontSize: textSize === 'large' ? 'clamp(24px, 6.5vw, 32px)' : 'clamp(20px, 5.5vw, 26px)',
             textShadow: '0 2px 12px rgba(0,0,0,0.9)',
           }}
         >
@@ -190,28 +191,6 @@ export default function StoryCard({ item, index, isLast, isSaved, onToggleSave }
           </span>
         </a>
       </div>
-
-      {/* ── Decorative frame ── */}
-      {/* Outer border ring */}
-      <div
-        className="absolute inset-2 rounded-[28px] pointer-events-none z-20"
-        style={{
-          border: `1.5px solid ${color}55`,
-          boxShadow: `inset 0 0 0 1px rgba(255,255,255,0.05), 0 0 40px ${color}18`,
-        }}
-      />
-      {/* Corner brackets — top-left */}
-      <div className="absolute top-5 left-5 w-7 h-7 pointer-events-none z-20"
-        style={{ borderTop: `2px solid ${color}`, borderLeft: `2px solid ${color}`, borderRadius: '10px 0 0 0' }} />
-      {/* top-right */}
-      <div className="absolute top-5 right-5 w-7 h-7 pointer-events-none z-20"
-        style={{ borderTop: `2px solid ${color}`, borderRight: `2px solid ${color}`, borderRadius: '0 10px 0 0' }} />
-      {/* bottom-left */}
-      <div className="absolute bottom-5 left-5 w-7 h-7 pointer-events-none z-20"
-        style={{ borderBottom: `2px solid ${color}`, borderLeft: `2px solid ${color}`, borderRadius: '0 0 0 10px' }} />
-      {/* bottom-right */}
-      <div className="absolute bottom-5 right-5 w-7 h-7 pointer-events-none z-20"
-        style={{ borderBottom: `2px solid ${color}`, borderRight: `2px solid ${color}`, borderRadius: '0 0 10px 0' }} />
 
       {/* ── Swipe hint ── */}
       {isLast ? (
