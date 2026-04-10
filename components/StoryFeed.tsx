@@ -201,39 +201,115 @@ export default function StoryFeed({ allNews }: Props) {
   }
 
   if (visibleNews.length === 0) {
+    const readToday = allNews.length;
+    const isEmpty = readToday === 0;
+
     return (
       <>
-        <div className="story-frame bg-black flex flex-col items-center justify-center gap-6 px-8 text-center">
-          <div className="w-20 h-20 rounded-full bg-white/10 flex items-center justify-center">
-            <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
+        <div className="story-frame bg-black flex flex-col overflow-hidden relative">
+          {/* Background glow */}
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 rounded-full bg-yellow-400/8 blur-3xl" />
           </div>
-          <div>
-            <p className="text-white text-2xl font-bold mb-2">¡Al día!</p>
-            <p className="text-white/50 text-sm">Has visto todas las noticias disponibles.</p>
-            <p className="text-white/40 text-sm mt-1">Desliza hacia abajo para buscar nuevas noticias.</p>
-          </div>
-          <div className="flex flex-col gap-3 w-full max-w-xs">
-            {savedItems.length > 0 && (
-              <button
-                onClick={() => setDrawerOpen(true)}
-                className="px-8 py-3 bg-yellow-400 text-black rounded-full font-semibold text-sm active:scale-95 transition-transform flex items-center justify-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                </svg>
-                Ver guardadas ({savedItems.length})
-              </button>
+
+          <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
+            {/* Icon */}
+            <div className="relative mb-7">
+              <div className="w-28 h-28 rounded-full bg-yellow-400/10 flex items-center justify-center">
+                <div className="w-20 h-20 rounded-full bg-yellow-400/15 flex items-center justify-center">
+                  {isEmpty ? (
+                    <svg className="w-9 h-9 text-yellow-400/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                        d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
+                    </svg>
+                  ) : (
+                    <svg className="w-9 h-9 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  )}
+                </div>
+              </div>
+              {!isEmpty && (
+                <span className="absolute -top-1 -right-1 w-6 h-6 bg-yellow-400 rounded-full flex items-center justify-center text-black text-[10px] font-black">
+                  ✓
+                </span>
+              )}
+            </div>
+
+            {/* Heading */}
+            <h1 className="text-white text-3xl font-black mb-2">
+              {isEmpty ? 'Sin noticias aún' : '¡Al día!'}
+            </h1>
+            <p className="text-white/45 text-sm leading-relaxed mb-8 max-w-xs">
+              {isEmpty
+                ? 'No hay noticias de Córdoba publicadas hoy todavía.\nVuelve más tarde.'
+                : 'Has leído todas las noticias disponibles de hoy. Las nuevas noticias aparecen cada pocos minutos.'}
+            </p>
+
+            {/* Stats card */}
+            {!isEmpty && (
+              <div className="w-full max-w-xs bg-white/5 border border-white/10 rounded-2xl p-4 mb-7 flex items-center justify-around">
+                <div className="text-center">
+                  <p className="text-yellow-400 text-2xl font-black">{readToday}</p>
+                  <p className="text-white/35 text-[11px] mt-0.5">leídas hoy</p>
+                </div>
+                <div className="w-px h-8 bg-white/10" />
+                <div className="text-center">
+                  <p className="text-yellow-400 text-2xl font-black">{savedItems.length}</p>
+                  <p className="text-white/35 text-[11px] mt-0.5">guardadas</p>
+                </div>
+                <div className="w-px h-8 bg-white/10" />
+                <div className="text-center">
+                  <p className="text-yellow-400 text-2xl font-black">5'</p>
+                  <p className="text-white/35 text-[11px] mt-0.5">refresco</p>
+                </div>
+              </div>
             )}
-            <button
-              onClick={resetSeen}
-              className="px-8 py-3 bg-white text-black rounded-full font-semibold text-sm active:scale-95 transition-transform"
-            >
-              Volver a ver todo
-            </button>
+
+            {/* Actions */}
+            <div className="flex flex-col gap-3 w-full max-w-xs">
+              {/* Primary: refresh */}
+              <button
+                onClick={() => router.refresh()}
+                className="w-full py-4 bg-yellow-400 text-black rounded-2xl font-bold text-base active:scale-95 transition-transform flex items-center justify-center gap-2 shadow-lg shadow-yellow-400/20"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round"
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Buscar nuevas noticias
+              </button>
+
+              {/* Secondary: saved */}
+              {savedItems.length > 0 && (
+                <button
+                  onClick={() => setDrawerOpen(true)}
+                  className="w-full py-3.5 bg-white/8 border border-white/12 text-white rounded-2xl font-semibold text-sm active:scale-95 transition-transform flex items-center justify-center gap-2"
+                >
+                  <svg className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                  </svg>
+                  Ver guardadas ({savedItems.length})
+                </button>
+              )}
+
+              {/* Tertiary: reset */}
+              {!isEmpty && (
+                <button
+                  onClick={resetSeen}
+                  className="w-full py-3 text-white/30 text-sm font-medium active:text-white/60 transition-colors"
+                >
+                  Volver a leer todo
+                </button>
+              )}
+            </div>
           </div>
+
+          {/* Bottom hint */}
+          <p className="text-white/20 text-xs text-center pb-8">
+            Desliza hacia abajo desde el inicio para refrescar
+          </p>
         </div>
         <SavedDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)}
           savedItems={savedItems} onRemove={toggleSave} />
