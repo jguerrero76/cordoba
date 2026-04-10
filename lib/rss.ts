@@ -172,6 +172,37 @@ function isLocalCordobaNews(
   return cats.some((c) => c.includes('córdoba') || c.includes('cordoba') || c === 'local' || c === 'ciudad');
 }
 
+const CATEGORY_RULES: { id: string; terms: string[] }[] = [
+  {
+    id: 'deportes',
+    terms: ['fútbol', 'futbol', 'córdoba cf', 'baloncesto', 'basket', 'atletismo', 'tenis', 'natación', 'ciclismo', 'maratón', 'primera división', 'segunda división', ' gol ', 'entrenador', 'jugador', 'estadio', 'arcángel', 'deport'],
+  },
+  {
+    id: 'politica',
+    terms: ['ayuntamiento', 'alcalde', 'alcaldesa', 'concejal', 'diputación', 'junta de andalucía', 'pleno', 'elecciones', 'candidato', 'partido popular', 'psoe', ' vox ', 'izquierda unida', 'gobierno municipal', 'presupuesto municipal'],
+  },
+  {
+    id: 'sucesos',
+    terms: ['accidente', 'detenid', 'fallece', 'fallecid', 'muert', 'herido', 'herida', 'robo', 'roban', 'incendio', 'guardia civil', 'policía nacional', 'policía local', 'juicio', 'condena', 'investigado', 'droga', 'atropello', 'apuñal'],
+  },
+  {
+    id: 'cultura',
+    terms: ['festival', 'concierto', 'exposición', 'museo', 'teatro', 'cine', ' arte ', 'libro', 'semana santa', 'feria ', 'flamenco', 'mezquita', 'patrimonio', 'turismo', 'monumento', 'música', 'danza'],
+  },
+  {
+    id: 'economia',
+    terms: ['empresa', 'empleo', 'desemple', 'paro ', 'contrato', 'inversión', 'negocio', 'comercio', 'precio', 'obra ', 'licitación', 'subvención', 'presupuesto', 'urbanismo'],
+  },
+];
+
+function detectCategory(title: string, description: string): string {
+  const text = `${title} ${description}`.toLowerCase();
+  for (const rule of CATEGORY_RULES) {
+    if (rule.terms.some((term) => text.includes(term))) return rule.id;
+  }
+  return 'otros';
+}
+
 function isRecentNews(dateStr?: string): boolean {
   if (!dateStr) return false;
   try {
@@ -223,6 +254,7 @@ function mapItems(items: (Parser.Item & CustomItem)[], source: NewsSource): News
         sourceColor: source.color,
         badgeClass: source.badgeClass,
         imageUrl: extractImage(item as CustomItem & Record<string, unknown>),
+        category: detectCategory(stripHtml(item.title || ''), description),
       };
     });
 }

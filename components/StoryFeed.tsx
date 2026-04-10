@@ -15,6 +15,16 @@ const STATS_KEY = 'cordoba_stats';
 const STREAK_KEY = 'cordoba_streak';
 const PULL_THRESHOLD = 75; // px needed to trigger refresh
 
+const FEED_CATEGORIES = [
+  { id: 'all',      label: 'Todas'    },
+  { id: 'deportes', label: 'Deportes' },
+  { id: 'politica', label: 'Política' },
+  { id: 'sucesos',  label: 'Sucesos'  },
+  { id: 'cultura',  label: 'Cultura'  },
+  { id: 'economia', label: 'Economía' },
+  { id: 'otros',    label: 'Otros'    },
+];
+
 interface Props {
   allNews: NewsItem[];
 }
@@ -28,6 +38,7 @@ export default function StoryFeed({ allNews }: Props) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
+  const [activeCategory, setActiveCategory] = useState('all');
   const [prefs, setPrefs] = useState<UserPrefs>(DEFAULT_PREFS);
   const [readingHistory, setReadingHistory] = useState<ReadingHistory>({});
   const [streakData, setStreakData] = useState<StreakData>({ count: 0, lastDate: '' });
@@ -115,7 +126,7 @@ export default function StoryFeed({ allNews }: Props) {
 
     containerRef.current.querySelectorAll('[data-index]').forEach((el) => observer.observe(el));
     return () => observer.disconnect();
-  }, [visibleNews, prefs, ready]);
+  }, [visibleNews, prefs, ready, activeCategory]);
 
   // ── Prevent scrolling back to already-seen cards ──
   useEffect(() => {
@@ -232,20 +243,42 @@ export default function StoryFeed({ allNews }: Props) {
     [allNews, savedIds]
   );
 
-  // Apply user preferences on top of the unseen list
-  const displayedNews = useMemo(() => {
-    return visibleNews.filter((n) => {
+  // Apply user preferences (source toggles, image filter)
+  const filteredByPrefs = useMemo(() =>
+    visibleNews.filter((n) => {
       if (prefs.hiddenSources.includes(n.source)) return false;
       if (prefs.onlyWithImage && !n.imageUrl) return false;
       return true;
-    });
-  }, [visibleNews, prefs]);
+    }),
+  [visibleNews, prefs]);
+
+  // Also apply active category filter
+  const displayedNews = useMemo(() =>
+    activeCategory === 'all'
+      ? filteredByPrefs
+      : filteredByPrefs.filter((n) => n.category === activeCategory),
+  [filteredByPrefs, activeCategory]);
+
+  // Article counts per category (based on prefs-filtered list, before category filter)
+  const categoryCounts = useMemo(() => {
+    const c: Record<string, number> = { all: filteredByPrefs.length };
+    filteredByPrefs.forEach((n) => { c[n.category] = (c[n.category] ?? 0) + 1; });
+    return c;
+  }, [filteredByPrefs]);
 
   // Keep refs in sync with displayedNews for touch handlers and stat tracking
   useEffect(() => {
     visibleNewsLengthRef.current = displayedNews.length;
     displayedNewsRef.current = displayedNews;
   }, [displayedNews]);
+
+  // Reset scroll position when category changes
+  useEffect(() => {
+    if (!containerRef.current) return;
+    containerRef.current.scrollTop = 0;
+    currentIndexRef.current = 0;
+    setCurrentIndex(0);
+  }, [activeCategory]);
 
   const updatePrefs = useCallback((update: Partial<UserPrefs>) => {
     setPrefs((prev) => {
@@ -268,11 +301,62 @@ export default function StoryFeed({ allNews }: Props) {
   const pullProgress = Math.min(pullDistance / PULL_THRESHOLD, 1);
   const circumference = 2 * Math.PI * 10; // circle r=10
 
+  // ── Category filter chips (reused in multiple render paths) ──
+  const chipsBar = (
+    <div
+      className="fixed left-0 right-0 z-40 flex gap-2 px-4 overflow-x-auto no-scrollbar pb-1"
+      style={{ top: '52px' }}
+    >
+      {FEED_CATEGORIES.map((cat) => {
+        const count = categoryCounts[cat.id] ?? 0;
+        if (cat.id !== 'all' && count === 0) return null;
+        return (
+          <button
+            key={cat.id}
+            onClick={() => setActiveCategory(cat.id)}
+            className={`shrink-0 px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-all active:scale-95 ${
+              activeCategory === cat.id
+                ? 'bg-yellow-400 text-black shadow-lg shadow-yellow-400/30'
+                : 'bg-black/55 backdrop-blur-md border border-white/20 text-white/70'
+            }`}
+          >
+            {cat.label}
+            {cat.id !== 'all' && (
+              <span className={`ml-1 tabular-nums ${activeCategory === cat.id ? 'text-black/60' : 'text-white/35'}`}>
+                {count}
+              </span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+
   if (!ready) {
     return (
       <div className="story-frame bg-black flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin" />
       </div>
+    );
+  }
+
+  // Category selected but no articles match — show simple message with chips
+  if (displayedNews.length === 0 && activeCategory !== 'all' && filteredByPrefs.length > 0) {
+    return (
+      <>
+        {chipsBar}
+        <div className="story-frame bg-black flex flex-col items-center justify-center gap-5 px-6 text-center">
+          <p className="text-white/50 text-sm">
+            No hay noticias de <span className="text-white font-semibold">{FEED_CATEGORIES.find((c) => c.id === activeCategory)?.label}</span> publicadas hoy
+          </p>
+          <button
+            onClick={() => setActiveCategory('all')}
+            className="px-5 py-2.5 bg-yellow-400 text-black rounded-full text-sm font-bold active:scale-95 transition-transform"
+          >
+            Ver todas
+          </button>
+        </div>
+      </>
     );
   }
 
@@ -482,6 +566,9 @@ export default function StoryFeed({ allNews }: Props) {
           )}
         </button>
       </div>
+
+      {/* Category chips */}
+      {chipsBar}
 
       {/* Feed */}
       <div ref={containerRef} className="story-container">

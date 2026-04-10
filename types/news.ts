@@ -9,6 +9,7 @@ export interface NewsItem {
   sourceColor: string;
   badgeClass: string;
   imageUrl?: string;
+  category: string;
 }
 
 export interface DayStats {

@@ -92,7 +92,7 @@ export default function StoryCard({ item, index, isLast, isSaved, onToggleSave, 
       />
 
       {/* ── Source chip — top left ── */}
-      <div className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between px-4 pt-14 pb-2">
+      <div className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between px-4 pt-[84px] pb-2">
         <div
           className="flex items-center gap-1.5 px-3 py-1 rounded-full"
           style={{ backgroundColor: `${color}cc` }}

@@ -40,6 +40,15 @@
     display: none;
   }
 
+  /* Hide scrollbar (for horizontal chip strips) */
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
   /* Individual story card */
   .story-card {
     height: 100vh;
