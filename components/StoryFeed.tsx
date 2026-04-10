@@ -89,7 +89,7 @@ export default function StoryFeed({ allNews }: Props) {
 
             // Update history
             const history: ReadingHistory = JSON.parse(localStorage.getItem(STATS_KEY) || '{}');
-            const day = history[todayKey] ?? { total: 0, sources: {} };
+            const day = history[todayKey] ?? { total: 0, reads: 0, sources: {} };
             day.total += 1;
             day.sources[item.source] = (day.sources[item.source] ?? 0) + 1;
             history[todayKey] = day;
@@ -215,6 +215,16 @@ export default function StoryFeed({ allNews }: Props) {
       localStorage.setItem(SAVED_KEY, JSON.stringify([...next]));
       return next;
     });
+  }, []);
+
+  const recordReadClick = useCallback((item: NewsItem) => {
+    const todayKey = new Date().toISOString().split('T')[0];
+    const history: ReadingHistory = JSON.parse(localStorage.getItem(STATS_KEY) || '{}');
+    const day = history[todayKey] ?? { total: 0, reads: 0, sources: {} };
+    day.reads = (day.reads ?? 0) + 1;
+    history[todayKey] = day;
+    localStorage.setItem(STATS_KEY, JSON.stringify(history));
+    setReadingHistory({ ...history });
   }, []);
 
   const savedItems = useMemo(
@@ -481,6 +491,7 @@ export default function StoryFeed({ allNews }: Props) {
             isLast={index === displayedNews.length - 1}
             isSaved={savedIds.has(item.id)}
             onToggleSave={() => toggleSave(item.id)}
+            onRead={() => recordReadClick(item)}
             textSize={prefs.textSize}
           />
         ))}

@@ -12,7 +12,8 @@ export interface NewsItem {
 }
 
 export interface DayStats {
-  total: number;
+  total: number;   // articles scrolled into view (vistas)
+  reads: number;   // articles opened via "Leer noticia" click (leídas)
   sources: Record<string, number>;
 }
 

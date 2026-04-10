@@ -53,9 +53,10 @@ export default function StatsModal({ open, onClose, history, streak, savedCount 
   const maxSource = sourceReads[0]?.[1] ?? 1;
 
   // ── Totals ──
-  const readToday = history[todayKey]?.total ?? 0;
+  const viewsToday = history[todayKey]?.total ?? 0;
+  const readsToday = history[todayKey]?.reads ?? 0;
   const readWeek = week.reduce((s, d) => s + d.reads, 0);
-  const readTotal = Object.values(history).reduce((s, d) => s + d.total, 0);
+  const viewsTotal = Object.values(history).reduce((s, d) => s + d.total, 0);
 
   return (
     <>
@@ -97,9 +98,10 @@ export default function StatsModal({ open, onClose, history, streak, savedCount 
         <div className="overflow-y-auto flex-1 px-5 py-4 space-y-5">
 
           {/* ── Hero numbers ── */}
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             {[
-              { value: readToday, label: 'Hoy', icon: '📰' },
+              { value: viewsToday, label: 'Vistas hoy', icon: '👁' },
+              { value: readsToday, label: 'Leídas hoy', icon: '📖' },
               { value: streak.count, label: 'Racha', icon: '🔥' },
               { value: savedCount, label: 'Guardadas', icon: '🔖' },
             ].map(({ value, label, icon }) => (
@@ -171,10 +173,10 @@ export default function StatsModal({ open, onClose, history, streak, savedCount 
           {/* ── Total ── */}
           <div className="bg-white/5 border border-white/8 rounded-2xl p-4 flex items-center justify-between">
             <div>
-              <p className="text-white text-sm font-semibold">Total leídas</p>
+              <p className="text-white text-sm font-semibold">Total vistas</p>
               <p className="text-white/35 text-xs mt-0.5">Desde que empezaste a usar la app</p>
             </div>
-            <span className="text-yellow-400 text-2xl font-black">{readTotal}</span>
+            <span className="text-yellow-400 text-2xl font-black">{viewsTotal}</span>
           </div>
 
           <div className="h-4" />

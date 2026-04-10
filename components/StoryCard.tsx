@@ -9,6 +9,7 @@ interface Props {
   isLast: boolean;
   isSaved: boolean;
   onToggleSave: () => void;
+  onRead?: () => void;
   textSize?: 'normal' | 'large';
 }
 
@@ -25,7 +26,7 @@ function timeAgo(pubDate: string): string {
   }
 }
 
-export default function StoryCard({ item, index, isLast, isSaved, onToggleSave, textSize = 'normal' }: Props) {
+export default function StoryCard({ item, index, isLast, isSaved, onToggleSave, onRead, textSize = 'normal' }: Props) {
   const [copied, setCopied] = useState(false);
   const [pulse, setPulse] = useState(false);
 
@@ -178,6 +179,7 @@ export default function StoryCard({ item, index, isLast, isSaved, onToggleSave, 
           href={item.link}
           target="_blank"
           rel="noopener noreferrer"
+          onClick={onRead}
           className="inline-flex items-center gap-2 active:scale-95 transition-transform"
         >
           <span
