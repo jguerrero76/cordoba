@@ -90,7 +90,7 @@ export default function StoryCard({ item, index, isLast, isSaved, onToggleSave }
       />
 
       {/* ── Source chip — top left ── */}
-      <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-4 pt-14 pb-2">
+      <div className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between px-4 pt-14 pb-2">
         <div
           className="flex items-center gap-1.5 px-3 py-1 rounded-full"
           style={{ backgroundColor: `${color}cc` }}
@@ -103,7 +103,7 @@ export default function StoryCard({ item, index, isLast, isSaved, onToggleSave }
       </div>
 
       {/* ── Right action buttons ── */}
-      <div className="absolute right-3 bottom-32 z-10 flex flex-col items-center gap-5">
+      <div className="absolute right-3 bottom-32 z-30 flex flex-col items-center gap-5">
         {/* Save */}
         <button
           onClick={handleSave}
@@ -152,7 +152,7 @@ export default function StoryCard({ item, index, isLast, isSaved, onToggleSave }
       </div>
 
       {/* ── Bottom content ── */}
-      <div className="absolute bottom-0 left-0 right-[72px] z-10 px-5 pb-14">
+      <div className="absolute bottom-0 left-0 right-[72px] z-30 px-5 pb-14">
 
         {/* Title */}
         <h2
@@ -190,6 +190,28 @@ export default function StoryCard({ item, index, isLast, isSaved, onToggleSave }
           </span>
         </a>
       </div>
+
+      {/* ── Decorative frame ── */}
+      {/* Outer border ring */}
+      <div
+        className="absolute inset-2 rounded-[28px] pointer-events-none z-20"
+        style={{
+          border: `1.5px solid ${color}55`,
+          boxShadow: `inset 0 0 0 1px rgba(255,255,255,0.05), 0 0 40px ${color}18`,
+        }}
+      />
+      {/* Corner brackets — top-left */}
+      <div className="absolute top-5 left-5 w-7 h-7 pointer-events-none z-20"
+        style={{ borderTop: `2px solid ${color}`, borderLeft: `2px solid ${color}`, borderRadius: '10px 0 0 0' }} />
+      {/* top-right */}
+      <div className="absolute top-5 right-5 w-7 h-7 pointer-events-none z-20"
+        style={{ borderTop: `2px solid ${color}`, borderRight: `2px solid ${color}`, borderRadius: '0 10px 0 0' }} />
+      {/* bottom-left */}
+      <div className="absolute bottom-5 left-5 w-7 h-7 pointer-events-none z-20"
+        style={{ borderBottom: `2px solid ${color}`, borderLeft: `2px solid ${color}`, borderRadius: '0 0 0 10px' }} />
+      {/* bottom-right */}
+      <div className="absolute bottom-5 right-5 w-7 h-7 pointer-events-none z-20"
+        style={{ borderBottom: `2px solid ${color}`, borderRight: `2px solid ${color}`, borderRadius: '0 0 10px 0' }} />
 
       {/* ── Swipe hint ── */}
       {isLast ? (
