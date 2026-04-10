@@ -15,12 +15,18 @@ const STATS_KEY = 'cordoba_stats';
 const STREAK_KEY = 'cordoba_streak';
 const PULL_THRESHOLD = 75; // px needed to trigger refresh
 
+// Wikimedia Commons — public-domain photos of Córdoba landmarks
 const CORDOBA_IMAGES = [
-  'https://source.unsplash.com/featured/900x500?mezquita,cordoba,spain',
-  'https://source.unsplash.com/featured/900x500?cordoba,spain,roman,bridge',
-  'https://source.unsplash.com/featured/900x500?patio,cordoba,flowers,andalucia',
-  'https://source.unsplash.com/featured/900x500?cordoba,mosque,architecture,interior',
-  'https://source.unsplash.com/featured/900x500?cordoba,andalucia,cathedral',
+  // Mezquita-Catedral interior: Diego Delso, CC BY-SA
+  'https://upload.wikimedia.org/wikipedia/commons/thumb/4/41/Mosque_Cathedral_of_Cordoba_2013_002.jpg/960px-Mosque_Cathedral_of_Cordoba_2013_002.jpg',
+  // Puente Romano panorama: Ángel M. Felicísimo, CC BY
+  'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d5/C%C3%B3rdoba_%285961773085%29.jpg/960px-C%C3%B3rdoba_%285961773085%29.jpg',
+  // Patio de los Naranjos: Emilio J. Rodríguez Posada, CC BY-SA
+  'https://upload.wikimedia.org/wikipedia/commons/thumb/0/06/Patio_de_los_naranjos_C%C3%B3rdoba.jpg/960px-Patio_de_los_naranjos_C%C3%B3rdoba.jpg',
+  // Medina Azahara: Álvaro Ibáñez, CC BY-SA
+  'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/Medina_Azahara%2C_C%C3%B3rdoba.jpg/960px-Medina_Azahara%2C_C%C3%B3rdoba.jpg',
+  // Alcázar de los Reyes Cristianos: Jl FilpoC, CC BY-SA
+  'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Alc%C3%A1zar_de_C%C3%B3rdoba_-_Jard%C3%ADn.jpg/960px-Alc%C3%A1zar_de_C%C3%B3rdoba_-_Jard%C3%ADn.jpg',
 ];
 
 interface WeatherData {
@@ -71,6 +77,7 @@ export default function StoryFeed({ allNews }: Props) {
   const [cordobaImage] = useState(
     () => CORDOBA_IMAGES[Math.floor(Math.random() * CORDOBA_IMAGES.length)]
   );
+  const [imageError, setImageError] = useState(false);
   const [prefs, setPrefs] = useState<UserPrefs>(DEFAULT_PREFS);
   const [readingHistory, setReadingHistory] = useState<ReadingHistory>({});
   const [streakData, setStreakData] = useState<StreakData>({ count: 0, lastDate: '' });
@@ -461,11 +468,28 @@ export default function StoryFeed({ allNews }: Props) {
             <>
               {/* ── Hero image ── */}
               <div className="relative shrink-0 overflow-hidden" style={{ height: '52vw', maxHeight: '260px' }}>
-                <img
-                  src={cordobaImage}
-                  alt="Córdoba"
-                  className="w-full h-full object-cover"
-                />
+                {imageError ? (
+                  /* CSS fallback: Córdoba sunset gradient */
+                  <div className="w-full h-full" style={{
+                    background: 'linear-gradient(160deg, #1a0a00 0%, #7c2d00 35%, #c2410c 60%, #f59e0b 85%, #fde68a 100%)',
+                  }}>
+                    {/* Silhouette arch shapes */}
+                    <svg viewBox="0 0 400 200" className="absolute bottom-0 w-full" fill="#111" preserveAspectRatio="xMidYMax slice">
+                      <path d="M0 200 L0 140 Q50 80 100 140 L100 200Z"/>
+                      <path d="M90 200 L90 150 Q140 90 190 150 L190 200Z"/>
+                      <path d="M180 200 L180 150 Q230 90 280 150 L280 200Z"/>
+                      <path d="M270 200 L270 140 Q320 80 370 140 L370 200Z"/>
+                      <rect x="0" y="195" width="400" height="10"/>
+                    </svg>
+                  </div>
+                ) : (
+                  <img
+                    src={cordobaImage}
+                    alt="Córdoba"
+                    className="w-full h-full object-cover"
+                    onError={() => setImageError(true)}
+                  />
+                )}
                 {/* Gradient overlay */}
                 <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black" />
                 {/* ¡Al día! badge on image */}
