@@ -29,6 +29,13 @@ function timeAgo(pubDate: string): string {
 export default function StoryCard({ item, index, isLast, isSaved, onToggleSave, onRead, textSize = 'normal' }: Props) {
   const [copied, setCopied] = useState(false);
   const [pulse, setPulse] = useState(false);
+  const [summaryOpen, setSummaryOpen] = useState(false);
+
+  const summary = (() => {
+    const words = item.description.trim().split(/\s+/).filter(Boolean);
+    if (words.length <= 50) return item.description;
+    return words.slice(0, 50).join(' ') + '…';
+  })();
 
   const handleSave = () => {
     onToggleSave();
@@ -135,6 +142,20 @@ export default function StoryCard({ item, index, isLast, isSaved, onToggleSave, 
           </span>
         </button>
 
+        {/* Summary */}
+        <button
+          onClick={() => setSummaryOpen(true)}
+          aria-label="Ver resumen"
+          className="flex flex-col items-center gap-1.5 active:scale-90 transition-transform"
+        >
+          <div className="w-[52px] h-[52px] rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center shadow-lg">
+            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 10h16M4 14h10" />
+            </svg>
+          </div>
+          <span className="text-white/70 text-[11px] font-semibold drop-shadow">Resumen</span>
+        </button>
+
         {/* Share */}
         <button
           onClick={handleShare}
@@ -193,6 +214,60 @@ export default function StoryCard({ item, index, isLast, isSaved, onToggleSave, 
           </span>
         </a>
       </div>
+
+      {/* ── Summary modal ── */}
+      {summaryOpen && (
+        <div
+          className="fixed inset-0 z-[100] flex items-end justify-center bg-black/70 backdrop-blur-sm"
+          onClick={() => setSummaryOpen(false)}
+        >
+          <div
+            className="w-full mx-3 mb-2 bg-[#111] border border-white/10 rounded-3xl p-5 pb-8"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between mb-4">
+              <span
+                className="text-xs font-bold px-3 py-1 rounded-full text-white"
+                style={{ backgroundColor: `${color}cc` }}
+              >
+                {item.source}
+              </span>
+              <button
+                onClick={() => setSummaryOpen(false)}
+                className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center"
+              >
+                <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Label */}
+            <p className="text-white/35 text-[10px] font-semibold uppercase tracking-widest mb-2">Resumen</p>
+
+            {/* Summary text */}
+            <p className="text-white text-sm leading-relaxed">
+              {summary || 'No hay resumen disponible para esta noticia.'}
+            </p>
+
+            {/* Read link */}
+            <a
+              href={item.link}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={onRead}
+              className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold active:opacity-70 transition-opacity"
+              style={{ color: item.sourceColor }}
+            >
+              Leer noticia completa
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+            </a>
+          </div>
+        </div>
+      )}
 
       {/* ── Swipe hint ── */}
       {isLast ? (
