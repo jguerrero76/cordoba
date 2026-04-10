@@ -277,8 +277,10 @@ export default function StoryFeed({ allNews }: Props) {
   }
 
   if (displayedNews.length === 0) {
-    const readToday = allNews.length;
-    const isEmpty = readToday === 0;
+    const todayKey = new Date().toISOString().split('T')[0];
+    const viewsToday = readingHistory[todayKey]?.total ?? 0;
+    const readsToday = readingHistory[todayKey]?.reads ?? 0;
+    const isEmpty = allNews.length === 0;
 
     return (
       <>
@@ -320,25 +322,25 @@ export default function StoryFeed({ allNews }: Props) {
             <p className="text-white/45 text-sm leading-relaxed mb-8 max-w-xs">
               {isEmpty
                 ? 'No hay noticias de Córdoba publicadas hoy todavía.\nVuelve más tarde.'
-                : 'Has leído todas las noticias disponibles de hoy. Las nuevas noticias aparecen cada pocos minutos.'}
+                : 'Has visto todas las noticias disponibles de hoy. Las nuevas noticias aparecen cada pocos minutos.'}
             </p>
 
             {/* Stats card */}
             {!isEmpty && (
               <div className="w-full max-w-xs bg-white/5 border border-white/10 rounded-2xl p-4 mb-7 flex items-center justify-around">
                 <div className="text-center">
-                  <p className="text-yellow-400 text-2xl font-black">{readToday}</p>
+                  <p className="text-yellow-400 text-2xl font-black">{viewsToday}</p>
+                  <p className="text-white/35 text-[11px] mt-0.5">vistas hoy</p>
+                </div>
+                <div className="w-px h-8 bg-white/10" />
+                <div className="text-center">
+                  <p className="text-yellow-400 text-2xl font-black">{readsToday}</p>
                   <p className="text-white/35 text-[11px] mt-0.5">leídas hoy</p>
                 </div>
                 <div className="w-px h-8 bg-white/10" />
                 <div className="text-center">
                   <p className="text-yellow-400 text-2xl font-black">{savedItems.length}</p>
                   <p className="text-white/35 text-[11px] mt-0.5">guardadas</p>
-                </div>
-                <div className="w-px h-8 bg-white/10" />
-                <div className="text-center">
-                  <p className="text-yellow-400 text-2xl font-black">5'</p>
-                  <p className="text-white/35 text-[11px] mt-0.5">refresco</p>
                 </div>
               </div>
             )}
