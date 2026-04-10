@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Dark background -->
+  <rect width="512" height="512" rx="96" fill="#111111"/>
+
+  <!-- ── MEZQUITA ── -->
+  <!-- Base bar -->
+  <rect x="52" y="328" width="408" height="18" rx="5" fill="#f59e0b"/>
+
+  <!-- 4 columns -->
+  <rect x="52"  y="188" width="32" height="140" rx="5" fill="#f59e0b"/>
+  <rect x="178" y="188" width="32" height="140" rx="5" fill="#f59e0b"/>
+  <rect x="298" y="188" width="32" height="140" rx="5" fill="#f59e0b"/>
+  <rect x="428" y="188" width="32" height="140" rx="5" fill="#f59e0b"/>
+
+  <!-- Arch 1 — alternating red / white voussoirs (iconic Mezquita stripe) -->
+  <path d="M84 228 Q131 108 178 228" fill="none" stroke="#c41230" stroke-width="38" stroke-linecap="square"/>
+  <path d="M84 228 Q131 146 178 228" fill="none" stroke="#f0ede6" stroke-width="26" stroke-linecap="square"/>
+  <path d="M84 228 Q131 168 178 228" fill="none" stroke="#c41230" stroke-width="14" stroke-linecap="square"/>
+
+  <!-- Arch 2 -->
+  <path d="M210 228 Q256 108 298 228" fill="none" stroke="#c41230" stroke-width="38" stroke-linecap="square"/>
+  <path d="M210 228 Q256 146 298 228" fill="none" stroke="#f0ede6" stroke-width="26" stroke-linecap="square"/>
+  <path d="M210 228 Q256 168 298 228" fill="none" stroke="#c41230" stroke-width="14" stroke-linecap="square"/>
+
+  <!-- Arch 3 -->
+  <path d="M330 228 Q379 108 428 228" fill="none" stroke="#c41230" stroke-width="38" stroke-linecap="square"/>
+  <path d="M330 228 Q379 146 428 228" fill="none" stroke="#f0ede6" stroke-width="26" stroke-linecap="square"/>
+  <path d="M330 228 Q379 168 428 228" fill="none" stroke="#c41230" stroke-width="14" stroke-linecap="square"/>
+
+  <!-- ── NEWSPAPER ── -->
+  <rect x="52" y="356" width="408" height="108" rx="10" fill="#1c1c1c"/>
+  <!-- Yellow headline -->
+  <rect x="72" y="374" width="150" height="14" rx="4" fill="#f59e0b"/>
+  <!-- Divider -->
+  <rect x="72" y="395" width="368" height="2" fill="white" opacity="0.1"/>
+  <!-- Text lines -->
+  <rect x="72" y="404" width="368" height="9" rx="3" fill="white" opacity="0.22"/>
+  <rect x="72" y="420" width="300" height="9" rx="3" fill="white" opacity="0.15"/>
+  <rect x="72" y="436" width="220" height="9" rx="3" fill="white" opacity="0.1"/>
+</svg>

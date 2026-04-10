@@ -20,6 +20,8 @@ export const metadata: Metadata = {
     locale: 'es_ES',
     type: 'website',
   },
+  themeColor: '#111111',
+  manifest: '/manifest.json',
 };
 
 export default function RootLayout({
