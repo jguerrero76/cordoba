@@ -30,12 +30,25 @@ export default function StoryCard({ item, index, isLast, isSaved, onToggleSave, 
   const [copied, setCopied] = useState(false);
   const [pulse, setPulse] = useState(false);
   const [summaryOpen, setSummaryOpen] = useState(false);
+  // null = not fetched, 'loading' = fetching, string = ready
+  const [aiSummary, setAiSummary] = useState<string | 'loading' | null>(null);
 
-  const summary = (() => {
-    const words = item.description.trim().split(/\s+/).filter(Boolean);
-    if (words.length <= 50) return item.description;
-    return words.slice(0, 50).join(' ') + '…';
-  })();
+  const openSummary = async () => {
+    setSummaryOpen(true);
+    if (aiSummary !== null) return; // already fetched or fetching
+    setAiSummary('loading');
+    try {
+      const res = await fetch('/api/summarize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: item.title, content: item.fullText || item.description }),
+      });
+      const data = await res.json() as { summary?: string };
+      setAiSummary(data.summary || item.description);
+    } catch {
+      setAiSummary(item.description);
+    }
+  };
 
   const handleSave = () => {
     onToggleSave();
@@ -144,7 +157,7 @@ export default function StoryCard({ item, index, isLast, isSaved, onToggleSave, 
 
         {/* Summary */}
         <button
-          onClick={() => setSummaryOpen(true)}
+          onClick={openSummary}
           aria-label="Ver resumen"
           className="flex flex-col items-center gap-1.5 active:scale-90 transition-transform"
         >
@@ -247,9 +260,16 @@ export default function StoryCard({ item, index, isLast, isSaved, onToggleSave, 
             <p className="text-white/35 text-[10px] font-semibold uppercase tracking-widest mb-2">Resumen</p>
 
             {/* Summary text */}
-            <p className="text-white text-sm leading-relaxed">
-              {summary || 'No hay resumen disponible para esta noticia.'}
-            </p>
+            {aiSummary === 'loading' ? (
+              <div className="flex items-center gap-2 py-2">
+                <div className="w-4 h-4 border-2 border-white/20 border-t-white/70 rounded-full animate-spin shrink-0" />
+                <span className="text-white/40 text-sm">Generando resumen…</span>
+              </div>
+            ) : (
+              <p className="text-white text-sm leading-relaxed">
+                {aiSummary || 'No hay resumen disponible para esta noticia.'}
+              </p>
+            )}
 
             {/* Read link */}
             <a

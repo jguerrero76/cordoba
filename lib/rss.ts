@@ -255,6 +255,9 @@ function mapItems(items: (Parser.Item & CustomItem)[], source: NewsSource): News
         badgeClass: source.badgeClass,
         imageUrl: extractImage(item as CustomItem & Record<string, unknown>),
         category: detectCategory(stripHtml(item.title || ''), description),
+        fullText: item.contentEncoded
+          ? stripHtml(item.contentEncoded).slice(0, 2000)
+          : description,
       };
     });
 }

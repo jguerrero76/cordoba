@@ -10,6 +10,7 @@ export interface NewsItem {
   badgeClass: string;
   imageUrl?: string;
   category: string;
+  fullText?: string;   // longer content for AI summarisation
 }
 
 export interface DayStats {
