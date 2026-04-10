@@ -177,10 +177,12 @@ function isRecentNews(dateStr?: string): boolean {
   try {
     const date = new Date(dateStr);
     if (isNaN(date.getTime())) return false;
-    // Accept today + last 2 days so the feed is never empty on weekends
-    // or when feeds are slow to update.
-    const msAgo = Date.now() - date.getTime();
-    return msAgo >= 0 && msAgo < 3 * 24 * 60 * 60 * 1000;
+    // Only today's articles. Compare against the start of the current day
+    // in local server time so early-morning runs still get today's news.
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfTomorrow = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000);
+    return date >= startOfToday && date < startOfTomorrow;
   } catch {
     return false;
   }
