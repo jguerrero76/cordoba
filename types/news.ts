@@ -11,6 +11,19 @@ export interface NewsItem {
   imageUrl?: string;
 }
 
+export interface DayStats {
+  total: number;
+  sources: Record<string, number>;
+}
+
+/** Keys are ISO date strings 'YYYY-MM-DD' */
+export type ReadingHistory = Record<string, DayStats>;
+
+export interface StreakData {
+  count: number;
+  lastDate: string; // 'YYYY-MM-DD'
+}
+
 export interface UserPrefs {
   hiddenSources: string[];   // source names the user has disabled
   onlyWithImage: boolean;    // hide articles without a photo

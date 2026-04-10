@@ -2,14 +2,17 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { NewsItem, UserPrefs, DEFAULT_PREFS } from '@/types/news';
+import { NewsItem, UserPrefs, DEFAULT_PREFS, ReadingHistory, StreakData } from '@/types/news';
 import StoryCard from './StoryCard';
 import SavedDrawer from './SavedDrawer';
 import SettingsModal from './SettingsModal';
+import StatsModal from './StatsModal';
 
 const SEEN_KEY = 'cordoba_seen';
 const SAVED_KEY = 'cordoba_saved';
 const PREFS_KEY = 'cordoba_prefs';
+const STATS_KEY = 'cordoba_stats';
+const STREAK_KEY = 'cordoba_streak';
 const PULL_THRESHOLD = 75; // px needed to trigger refresh
 
 interface Props {
@@ -24,7 +27,10 @@ export default function StoryFeed({ allNews }: Props) {
   const [ready, setReady] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [statsOpen, setStatsOpen] = useState(false);
   const [prefs, setPrefs] = useState<UserPrefs>(DEFAULT_PREFS);
+  const [readingHistory, setReadingHistory] = useState<ReadingHistory>({});
+  const [streakData, setStreakData] = useState<StreakData>({ count: 0, lastDate: '' });
   const [pullDistance, setPullDistance] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const [transitioning, setTransitioning] = useState(false);
@@ -38,14 +44,19 @@ export default function StoryFeed({ allNews }: Props) {
   // Refs for values read in event handlers (avoids stale closure with concurrent React)
   const pullDistanceRef = useRef(0);
   const visibleNewsLengthRef = useRef(0);
+  const displayedNewsRef = useRef<NewsItem[]>([]);
 
   // ── Hydrate from localStorage ──
   useEffect(() => {
     const seen = new Set<string>(JSON.parse(localStorage.getItem(SEEN_KEY) || '[]'));
     const saved = new Set<string>(JSON.parse(localStorage.getItem(SAVED_KEY) || '[]'));
     const savedPrefs: UserPrefs = { ...DEFAULT_PREFS, ...JSON.parse(localStorage.getItem(PREFS_KEY) || '{}') };
+    const history: ReadingHistory = JSON.parse(localStorage.getItem(STATS_KEY) || '{}');
+    const streak: StreakData = JSON.parse(localStorage.getItem(STREAK_KEY) || '{"count":0,"lastDate":""}');
     setSavedIds(saved);
     setPrefs(savedPrefs);
+    setReadingHistory(history);
+    setStreakData(streak);
     const filtered = allNews.filter((n) => !seen.has(n.id));
     visibleNewsLengthRef.current = filtered.length;
     setVisibleNews(filtered);
@@ -65,9 +76,38 @@ export default function StoryFeed({ allNews }: Props) {
           currentIndexRef.current = idx;
           setCurrentIndex(idx);
           setTransitioning(false);
+
+          // Mark as seen
           const seen = new Set<string>(JSON.parse(localStorage.getItem(SEEN_KEY) || '[]'));
           seen.add(id);
           localStorage.setItem(SEEN_KEY, JSON.stringify([...seen]));
+
+          // Record read stat
+          const item = displayedNewsRef.current[idx];
+          if (item) {
+            const todayKey = new Date().toISOString().split('T')[0];
+
+            // Update history
+            const history: ReadingHistory = JSON.parse(localStorage.getItem(STATS_KEY) || '{}');
+            const day = history[todayKey] ?? { total: 0, sources: {} };
+            day.total += 1;
+            day.sources[item.source] = (day.sources[item.source] ?? 0) + 1;
+            history[todayKey] = day;
+            localStorage.setItem(STATS_KEY, JSON.stringify(history));
+            setReadingHistory({ ...history });
+
+            // Update streak (once per day)
+            const streak: StreakData = JSON.parse(localStorage.getItem(STREAK_KEY) || '{"count":0,"lastDate":""}');
+            if (streak.lastDate !== todayKey) {
+              const yesterday = new Date();
+              yesterday.setDate(yesterday.getDate() - 1);
+              const yesterdayKey = yesterday.toISOString().split('T')[0];
+              streak.count = streak.lastDate === yesterdayKey ? streak.count + 1 : 1;
+              streak.lastDate = todayKey;
+              localStorage.setItem(STREAK_KEY, JSON.stringify(streak));
+              setStreakData({ ...streak });
+            }
+          }
         });
       },
       { root: containerRef.current, threshold: 0.6 }
@@ -191,9 +231,10 @@ export default function StoryFeed({ allNews }: Props) {
     });
   }, [visibleNews, prefs]);
 
-  // Keep the ref in sync with displayedNews length for touch handlers
+  // Keep refs in sync with displayedNews for touch handlers and stat tracking
   useEffect(() => {
     visibleNewsLengthRef.current = displayedNews.length;
+    displayedNewsRef.current = displayedNews;
   }, [displayedNews]);
 
   const updatePrefs = useCallback((update: Partial<UserPrefs>) => {
@@ -387,6 +428,17 @@ export default function StoryFeed({ allNews }: Props) {
 
       {/* Top-right buttons */}
       <div className="fixed top-3 right-4 z-50 flex items-center gap-2">
+        {/* Stats */}
+        <button
+          onClick={() => setStatsOpen(true)}
+          aria-label="Mis estadísticas"
+          className="w-9 h-9 rounded-full bg-black/50 backdrop-blur-md border border-white/15 flex items-center justify-center active:scale-95 transition-transform"
+        >
+          <svg className="w-4 h-4 text-white/60" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round"
+              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          </svg>
+        </button>
         {/* Settings */}
         <button
           onClick={() => setSettingsOpen(true)}
@@ -450,6 +502,13 @@ export default function StoryFeed({ allNews }: Props) {
         onPrefsChange={updatePrefs}
         onResetSeen={resetSeen}
         readToday={allNews.length - visibleNews.length}
+      />
+      <StatsModal
+        open={statsOpen}
+        onClose={() => setStatsOpen(false)}
+        history={readingHistory}
+        streak={streakData}
+        savedCount={savedItems.length}
       />
     </>
   );
