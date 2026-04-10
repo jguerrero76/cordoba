@@ -1,6 +1,6 @@
 {
-  "name": "Córdoba Hoy",
-  "short_name": "Córdoba Hoy",
+  "name": "Córdoba News",
+  "short_name": "Córdoba News",
   "description": "Las noticias más destacadas de Córdoba, España",
   "start_url": "/",
   "display": "standalone",

@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Córdoba Hoy — Noticias de Córdoba, España',
+  title: 'Córdoba News — Noticias de Córdoba, España',
   description:
     'Las noticias más destacadas de Córdoba, España. Información local, deportes, cultura, economía y más, actualizada cada 5 minutos.',
   keywords: [
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
     'ABC Córdoba',
   ],
   openGraph: {
-    title: 'Córdoba Hoy — Noticias de Córdoba',
+    title: 'Córdoba News — Noticias de Córdoba',
     description: 'Las noticias más destacadas de Córdoba, España',
     locale: 'es_ES',
     type: 'website',
