@@ -13,11 +13,11 @@ export async function POST(req: NextRequest) {
 
     const message = await client.messages.create({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 300,
+      max_tokens: 500,
       messages: [
         {
           role: 'user',
-          content: `Eres un periodista. Resume la siguiente noticia local de Córdoba (España) en un párrafo claro y natural de unas 80-100 palabras en español. Captura los hechos principales, quién está involucrado, qué pasó y por qué importa. Responde SOLO con el resumen, sin títulos ni presentación.
+          content: `Eres un periodista. Resume la siguiente noticia local de Córdoba (España) en dos párrafos claros y naturales de unas 150-180 palabras en total en español. Captura los hechos principales, quién está involucrado, qué pasó, contexto relevante y por qué importa. Responde SOLO con el resumen, sin títulos ni presentación.
 
 Título: ${title || ''}
 Contenido: ${content || ''}`,
