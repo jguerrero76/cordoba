@@ -297,6 +297,17 @@ export default function StoryFeed({ allNews }: Props) {
     if (containerRef.current) containerRef.current.scrollTop = 0;
   };
 
+  const markAllSeen = () => {
+    const seen = new Set<string>(JSON.parse(localStorage.getItem(SEEN_KEY) || '[]'));
+    allNews.forEach((n) => seen.add(n.id));
+    localStorage.setItem(SEEN_KEY, JSON.stringify([...seen]));
+    visibleNewsLengthRef.current = 0;
+    setVisibleNews([]);
+    currentIndexRef.current = 0;
+    setCurrentIndex(0);
+    if (containerRef.current) containerRef.current.scrollTop = 0;
+  };
+
   // ── Pull indicator ──
   const pullProgress = Math.min(pullDistance / PULL_THRESHOLD, 1);
   const circumference = 2 * Math.PI * 10; // circle r=10
@@ -524,6 +535,17 @@ export default function StoryFeed({ allNews }: Props) {
 
       {/* Top-right buttons */}
       <div className="fixed top-3 right-4 z-50 flex items-center gap-2">
+        {/* Mark all seen */}
+        <button
+          onClick={markAllSeen}
+          aria-label="Marcar todas como vistas"
+          className="w-9 h-9 rounded-full bg-black/50 backdrop-blur-md border border-white/15 flex items-center justify-center active:scale-95 transition-transform"
+        >
+          <svg className="w-4 h-4 text-white/60" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4" />
+          </svg>
+        </button>
         {/* Stats */}
         <button
           onClick={() => setStatsOpen(true)}
