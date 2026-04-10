@@ -15,6 +15,34 @@ const STATS_KEY = 'cordoba_stats';
 const STREAK_KEY = 'cordoba_streak';
 const PULL_THRESHOLD = 75; // px needed to trigger refresh
 
+const CORDOBA_IMAGES = [
+  'https://source.unsplash.com/featured/900x500?mezquita,cordoba,spain',
+  'https://source.unsplash.com/featured/900x500?cordoba,spain,roman,bridge',
+  'https://source.unsplash.com/featured/900x500?patio,cordoba,flowers,andalucia',
+  'https://source.unsplash.com/featured/900x500?cordoba,mosque,architecture,interior',
+  'https://source.unsplash.com/featured/900x500?cordoba,andalucia,cathedral',
+];
+
+interface WeatherData {
+  temp: number;
+  feelsLike: number;
+  code: number;
+  maxTemp: number;
+  minTemp: number;
+}
+
+function weatherInfo(code: number): { emoji: string; label: string } {
+  if (code === 0)  return { emoji: '☀️',  label: 'Despejado' };
+  if (code <= 2)   return { emoji: '🌤️',  label: 'Poco nublado' };
+  if (code === 3)  return { emoji: '☁️',  label: 'Nublado' };
+  if (code <= 48)  return { emoji: '🌫️',  label: 'Niebla' };
+  if (code <= 57)  return { emoji: '🌦️',  label: 'Llovizna' };
+  if (code <= 67)  return { emoji: '🌧️',  label: 'Lluvia' };
+  if (code <= 77)  return { emoji: '❄️',   label: 'Nieve' };
+  if (code <= 82)  return { emoji: '🌦️',  label: 'Chubascos' };
+  return              { emoji: '⛈️',  label: 'Tormenta' };
+}
+
 const FEED_CATEGORIES = [
   { id: 'all',      label: 'Todas'    },
   { id: 'deportes', label: 'Deportes' },
@@ -39,6 +67,10 @@ export default function StoryFeed({ allNews }: Props) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState('all');
+  const [weather, setWeather] = useState<WeatherData | null>(null);
+  const [cordobaImage] = useState(
+    () => CORDOBA_IMAGES[Math.floor(Math.random() * CORDOBA_IMAGES.length)]
+  );
   const [prefs, setPrefs] = useState<UserPrefs>(DEFAULT_PREFS);
   const [readingHistory, setReadingHistory] = useState<ReadingHistory>({});
   const [streakData, setStreakData] = useState<StreakData>({ count: 0, lastDate: '' });
@@ -73,6 +105,27 @@ export default function StoryFeed({ allNews }: Props) {
     setVisibleNews(filtered);
     setReady(true);
   }, [allNews]);
+
+  // ── Fetch Córdoba weather once on mount ──
+  useEffect(() => {
+    fetch(
+      'https://api.open-meteo.com/v1/forecast?latitude=37.8882&longitude=-4.7794' +
+      '&current=temperature_2m,weather_code,apparent_temperature' +
+      '&daily=temperature_2m_max,temperature_2m_min' +
+      '&timezone=Europe%2FMadrid&forecast_days=1'
+    )
+      .then((r) => r.json())
+      .then((data: { current: { temperature_2m: number; weather_code: number; apparent_temperature: number }; daily: { temperature_2m_max: number[]; temperature_2m_min: number[] } }) => {
+        setWeather({
+          temp: Math.round(data.current.temperature_2m),
+          feelsLike: Math.round(data.current.apparent_temperature),
+          code: data.current.weather_code,
+          maxTemp: Math.round(data.daily.temperature_2m_max[0]),
+          minTemp: Math.round(data.daily.temperature_2m_min[0]),
+        });
+      })
+      .catch(() => {});
+  }, []);
 
   // ── Track visible card + mark as seen ──
   useEffect(() => {
@@ -376,113 +429,136 @@ export default function StoryFeed({ allNews }: Props) {
     const viewsToday = readingHistory[todayKey]?.total ?? 0;
     const readsToday = readingHistory[todayKey]?.reads ?? 0;
     const isEmpty = allNews.length === 0;
+    const { emoji, label } = weather ? weatherInfo(weather.code) : { emoji: '🌡️', label: '' };
 
     return (
       <>
-        <div className="story-frame bg-black flex flex-col overflow-hidden relative">
-          {/* Background glow */}
-          <div className="absolute inset-0 pointer-events-none">
-            <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 rounded-full bg-yellow-400/8 blur-3xl" />
-          </div>
+        <div className="story-frame bg-black flex flex-col overflow-hidden">
 
-          <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
-            {/* Icon */}
-            <div className="relative mb-7">
-              <div className="w-28 h-28 rounded-full bg-yellow-400/10 flex items-center justify-center">
-                <div className="w-20 h-20 rounded-full bg-yellow-400/15 flex items-center justify-center">
-                  {isEmpty ? (
-                    <svg className="w-9 h-9 text-yellow-400/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                        d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
-                    </svg>
-                  ) : (
-                    <svg className="w-9 h-9 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
-                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  )}
-                </div>
+          {/* ── Sin noticias aún ── */}
+          {isEmpty ? (
+            <div className="flex-1 flex flex-col items-center justify-center px-6 text-center gap-6">
+              <div className="w-20 h-20 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
+                <svg className="w-9 h-9 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                    d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
+                </svg>
               </div>
-              {!isEmpty && (
-                <span className="absolute -top-1 -right-1 w-6 h-6 bg-yellow-400 rounded-full flex items-center justify-center text-black text-[10px] font-black">
-                  ✓
-                </span>
-              )}
-            </div>
-
-            {/* Heading */}
-            <h1 className="text-white text-3xl font-black mb-2">
-              {isEmpty ? 'Sin noticias aún' : '¡Al día!'}
-            </h1>
-            <p className="text-white/45 text-sm leading-relaxed mb-8 max-w-xs">
-              {isEmpty
-                ? 'No hay noticias de Córdoba publicadas hoy todavía.\nVuelve más tarde.'
-                : 'Has visto todas las noticias disponibles de hoy. Las nuevas noticias aparecen cada pocos minutos.'}
-            </p>
-
-            {/* Stats card */}
-            {!isEmpty && (
-              <div className="w-full max-w-xs bg-white/5 border border-white/10 rounded-2xl p-4 mb-7 flex items-center justify-around">
-                <div className="text-center">
-                  <p className="text-yellow-400 text-2xl font-black">{viewsToday}</p>
-                  <p className="text-white/35 text-[11px] mt-0.5">vistas hoy</p>
-                </div>
-                <div className="w-px h-8 bg-white/10" />
-                <div className="text-center">
-                  <p className="text-yellow-400 text-2xl font-black">{readsToday}</p>
-                  <p className="text-white/35 text-[11px] mt-0.5">leídas hoy</p>
-                </div>
-                <div className="w-px h-8 bg-white/10" />
-                <div className="text-center">
-                  <p className="text-yellow-400 text-2xl font-black">{savedItems.length}</p>
-                  <p className="text-white/35 text-[11px] mt-0.5">guardadas</p>
-                </div>
+              <div>
+                <h1 className="text-white text-2xl font-black mb-2">Sin noticias aún</h1>
+                <p className="text-white/40 text-sm leading-relaxed max-w-xs">
+                  No hay noticias de Córdoba publicadas hoy todavía. Vuelve más tarde.
+                </p>
               </div>
-            )}
-
-            {/* Actions */}
-            <div className="flex flex-col gap-3 w-full max-w-xs">
-              {/* Primary: refresh */}
               <button
                 onClick={() => router.refresh()}
-                className="w-full py-4 bg-yellow-400 text-black rounded-2xl font-bold text-base active:scale-95 transition-transform flex items-center justify-center gap-2 shadow-lg shadow-yellow-400/20"
+                className="px-6 py-3 bg-yellow-400 text-black rounded-2xl font-bold text-sm active:scale-95 transition-transform"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round"
-                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
                 Buscar nuevas noticias
               </button>
-
-              {/* Secondary: saved */}
-              {savedItems.length > 0 && (
-                <button
-                  onClick={() => setDrawerOpen(true)}
-                  className="w-full py-3.5 bg-white/8 border border-white/12 text-white rounded-2xl font-semibold text-sm active:scale-95 transition-transform flex items-center justify-center gap-2"
-                >
-                  <svg className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                  </svg>
-                  Ver guardadas ({savedItems.length})
-                </button>
-              )}
-
-              {/* Tertiary: reset */}
-              {!isEmpty && (
-                <button
-                  onClick={resetSeen}
-                  className="w-full py-3 text-white/30 text-sm font-medium active:text-white/60 transition-colors"
-                >
-                  Volver a leer todo
-                </button>
-              )}
             </div>
-          </div>
+          ) : (
+            <>
+              {/* ── Hero image ── */}
+              <div className="relative shrink-0 overflow-hidden" style={{ height: '52vw', maxHeight: '260px' }}>
+                <img
+                  src={cordobaImage}
+                  alt="Córdoba"
+                  className="w-full h-full object-cover"
+                />
+                {/* Gradient overlay */}
+                <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black" />
+                {/* ¡Al día! badge on image */}
+                <div className="absolute bottom-4 left-5 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-yellow-400 flex items-center justify-center shadow-lg shadow-yellow-400/30">
+                    <svg className="w-5 h-5 text-black" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h1 className="text-white text-2xl font-black leading-none drop-shadow-lg">¡Al día!</h1>
+                    <p className="text-white/65 text-xs mt-0.5 drop-shadow">Has visto todas las noticias de hoy</p>
+                  </div>
+                </div>
+              </div>
 
-          {/* Bottom hint */}
-          <p className="text-white/20 text-xs text-center pb-8">
-            Desliza hacia abajo desde el inicio para refrescar
-          </p>
+              {/* ── Scrollable content ── */}
+              <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+
+                {/* Weather */}
+                {weather && (
+                  <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center justify-between">
+                    <div>
+                      <p className="text-white/35 text-[10px] font-semibold uppercase tracking-widest mb-2">
+                        Córdoba ahora
+                      </p>
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-white text-4xl font-black">{weather.temp}°</span>
+                        <span className="text-white/50 text-sm">{label}</span>
+                      </div>
+                      <p className="text-white/30 text-xs mt-1.5">
+                        Sensación {weather.feelsLike}° · Máx {weather.maxTemp}° · Mín {weather.minTemp}°
+                      </p>
+                    </div>
+                    <span className="text-5xl">{emoji}</span>
+                  </div>
+                )}
+
+                {/* Stats */}
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center justify-around">
+                  <div className="text-center">
+                    <p className="text-yellow-400 text-2xl font-black">{viewsToday}</p>
+                    <p className="text-white/35 text-[11px] mt-0.5">vistas hoy</p>
+                  </div>
+                  <div className="w-px h-8 bg-white/10" />
+                  <div className="text-center">
+                    <p className="text-yellow-400 text-2xl font-black">{readsToday}</p>
+                    <p className="text-white/35 text-[11px] mt-0.5">leídas hoy</p>
+                  </div>
+                  <div className="w-px h-8 bg-white/10" />
+                  <div className="text-center">
+                    <p className="text-yellow-400 text-2xl font-black">{savedItems.length}</p>
+                    <p className="text-white/35 text-[11px] mt-0.5">guardadas</p>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex flex-col gap-3">
+                  <button
+                    onClick={() => router.refresh()}
+                    className="w-full py-4 bg-yellow-400 text-black rounded-2xl font-bold text-base active:scale-95 transition-transform flex items-center justify-center gap-2 shadow-lg shadow-yellow-400/20"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round"
+                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Buscar nuevas noticias
+                  </button>
+
+                  {savedItems.length > 0 && (
+                    <button
+                      onClick={() => setDrawerOpen(true)}
+                      className="w-full py-3.5 bg-white/8 border border-white/12 text-white rounded-2xl font-semibold text-sm active:scale-95 transition-transform flex items-center justify-center gap-2"
+                    >
+                      <svg className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                      </svg>
+                      Ver guardadas ({savedItems.length})
+                    </button>
+                  )}
+
+                  <button
+                    onClick={resetSeen}
+                    className="w-full py-3 text-white/30 text-sm font-medium active:text-white/60 transition-colors"
+                  >
+                    Volver a leer todo
+                  </button>
+                </div>
+
+                <div className="h-4" />
+              </div>
+            </>
+          )}
         </div>
         <SavedDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)}
           savedItems={savedItems} onRemove={toggleSave} />
