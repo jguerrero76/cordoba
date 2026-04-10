@@ -158,7 +158,7 @@ export default function StoryCard({ item, index, isLast, isSaved, onToggleSave, 
 
         {/* Title */}
         <h2
-          className="text-white font-black leading-tight mb-2.5"
+          className="text-white font-black leading-tight mb-2.5 uppercase"
           style={{
             fontSize: textSize === 'large' ? 'clamp(24px, 6.5vw, 32px)' : 'clamp(20px, 5.5vw, 26px)',
             textShadow: '0 2px 12px rgba(0,0,0,0.9)',
