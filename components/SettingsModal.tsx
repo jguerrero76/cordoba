@@ -65,7 +65,7 @@ export default function SettingsModal({ open, onClose, prefs, onPrefsChange, onR
 
       {/* Bottom sheet */}
       <div
-        className={`fixed bottom-0 left-0 right-0 z-50 bg-[#111] rounded-t-3xl transition-transform duration-300 ease-out max-h-[88dvh] flex flex-col ${
+        className={`fixed bottom-0 left-3 right-3 z-50 bg-[#111] rounded-3xl mb-2 transition-transform duration-300 ease-out max-h-[88dvh] flex flex-col ${
           open ? 'translate-y-0' : 'translate-y-full'
         }`}
       >
