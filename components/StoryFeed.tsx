@@ -16,18 +16,189 @@ const STATS_KEY       = 'cordoba_stats';
 const STREAK_KEY      = 'cordoba_streak';
 const PULL_THRESHOLD  = 75; // px needed to trigger refresh
 
-// Wikimedia Commons — public-domain photos of Córdoba landmarks
-const CORDOBA_IMAGES = [
-  // Mezquita-Catedral interior: Diego Delso, CC BY-SA
-  'https://upload.wikimedia.org/wikipedia/commons/thumb/4/41/Mosque_Cathedral_of_Cordoba_2013_002.jpg/960px-Mosque_Cathedral_of_Cordoba_2013_002.jpg',
-  // Puente Romano panorama: Ángel M. Felicísimo, CC BY
-  'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d5/C%C3%B3rdoba_%285961773085%29.jpg/960px-C%C3%B3rdoba_%285961773085%29.jpg',
-  // Patio de los Naranjos: Emilio J. Rodríguez Posada, CC BY-SA
-  'https://upload.wikimedia.org/wikipedia/commons/thumb/0/06/Patio_de_los_naranjos_C%C3%B3rdoba.jpg/960px-Patio_de_los_naranjos_C%C3%B3rdoba.jpg',
-  // Medina Azahara: Álvaro Ibáñez, CC BY-SA
-  'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/Medina_Azahara%2C_C%C3%B3rdoba.jpg/960px-Medina_Azahara%2C_C%C3%B3rdoba.jpg',
-  // Alcázar de los Reyes Cristianos: Jl FilpoC, CC BY-SA
-  'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Alc%C3%A1zar_de_C%C3%B3rdoba_-_Jard%C3%ADn.jpg/960px-Alc%C3%A1zar_de_C%C3%B3rdoba_-_Jard%C3%ADn.jpg',
+// Five illustrated SVG scenes of Córdoba — no external dependencies, always instant
+interface CordobaScene {
+  label: string;
+  bg: string;       // CSS gradient for the background div
+  svg: string;      // inner SVG markup (rendered via dangerouslySetInnerHTML)
+}
+
+const CORDOBA_SCENES: CordobaScene[] = [
+  {
+    // ① Atardecer — Mezquita-Catedral silhouette at sunset
+    label: 'Atardecer en la Mezquita-Catedral',
+    bg: 'linear-gradient(170deg, #0d0400 0%, #7c1d00 30%, #c2410c 58%, #f59e0b 80%, #fde68a 100%)',
+    svg: `<svg viewBox="0 0 400 200" preserveAspectRatio="xMidYMax slice" xmlns="http://www.w3.org/2000/svg">
+      <!-- sun -->
+      <circle cx="300" cy="70" r="30" fill="#fbbf24" opacity="0.7"/>
+      <!-- minaret -->
+      <rect x="170" y="40" width="24" height="120" fill="#111"/>
+      <rect x="166" y="36" width="32" height="10" rx="2" fill="#111"/>
+      <rect x="174" y="28" width="16" height="12" rx="1" fill="#111"/>
+      <!-- mosque body -->
+      <rect x="60" y="120" width="280" height="60" fill="#111"/>
+      <!-- arches -->
+      <path d="M70 120 Q88 90 106 120Z" fill="#0d0400"/>
+      <path d="M106 120 Q124 90 142 120Z" fill="#0d0400"/>
+      <path d="M142 120 Q160 90 178 120Z" fill="#0d0400"/>
+      <path d="M196 120 Q214 90 232 120Z" fill="#0d0400"/>
+      <path d="M232 120 Q250 90 268 120Z" fill="#0d0400"/>
+      <path d="M268 120 Q286 90 304 120Z" fill="#0d0400"/>
+      <path d="M304 120 Q322 90 340 120Z" fill="#0d0400"/>
+      <!-- ground -->
+      <rect x="0" y="170" width="400" height="30" fill="#111"/>
+      <!-- river reflection -->
+      <rect x="0" y="178" width="400" height="22" fill="#c2410c" opacity="0.25"/>
+    </svg>`,
+  },
+  {
+    // ② Noche — Roman bridge and river under stars
+    label: 'Noche en el Puente Romano',
+    bg: 'linear-gradient(180deg, #020617 0%, #0f172a 50%, #1e1b4b 80%, #312e81 100%)',
+    svg: `<svg viewBox="0 0 400 200" preserveAspectRatio="xMidYMax slice" xmlns="http://www.w3.org/2000/svg">
+      <!-- stars -->
+      <circle cx="30"  cy="18" r="1.2" fill="white" opacity="0.8"/>
+      <circle cx="80"  cy="8"  r="1"   fill="white" opacity="0.7"/>
+      <circle cx="130" cy="22" r="1.5" fill="white" opacity="0.9"/>
+      <circle cx="200" cy="5"  r="1.2" fill="white" opacity="0.8"/>
+      <circle cx="260" cy="15" r="1"   fill="white" opacity="0.6"/>
+      <circle cx="320" cy="9"  r="1.3" fill="white" opacity="0.85"/>
+      <circle cx="370" cy="25" r="1"   fill="white" opacity="0.7"/>
+      <circle cx="55"  cy="40" r="0.8" fill="white" opacity="0.5"/>
+      <circle cx="170" cy="32" r="0.9" fill="white" opacity="0.6"/>
+      <circle cx="340" cy="38" r="1.1" fill="white" opacity="0.75"/>
+      <!-- moon -->
+      <circle cx="340" cy="45" r="18" fill="#fef9c3" opacity="0.85"/>
+      <circle cx="350" cy="38" r="14" fill="#1e1b4b" opacity="0.9"/>
+      <!-- Calahorra tower -->
+      <rect x="15" y="80" width="40" height="90" fill="#111"/>
+      <rect x="10" y="76" width="50" height="10" rx="2" fill="#111"/>
+      <rect x="18" y="68" width="14" height="12" rx="1" fill="#111"/>
+      <rect x="38" y="68" width="14" height="12" rx="1" fill="#111"/>
+      <!-- bridge deck -->
+      <rect x="55" y="130" width="290" height="14" fill="#111"/>
+      <!-- bridge arches -->
+      <path d="M55 144 Q75 118 95 144Z" fill="#020617"/>
+      <path d="M95 144 Q115 118 135 144Z" fill="#020617"/>
+      <path d="M135 144 Q155 118 175 144Z" fill="#020617"/>
+      <path d="M175 144 Q195 118 215 144Z" fill="#020617"/>
+      <path d="M215 144 Q235 118 255 144Z" fill="#020617"/>
+      <path d="M255 144 Q275 118 295 144Z" fill="#020617"/>
+      <path d="M295 144 Q315 118 335 144Z" fill="#020617"/>
+      <!-- river -->
+      <rect x="0" y="158" width="400" height="42" fill="#1e3a5f" opacity="0.8"/>
+      <!-- moon reflection -->
+      <ellipse cx="310" cy="172" rx="18" ry="6" fill="#fef9c3" opacity="0.2"/>
+    </svg>`,
+  },
+  {
+    // ③ Amanecer — Dawn over the Guadalquivir
+    label: 'Amanecer en el Guadalquivir',
+    bg: 'linear-gradient(170deg, #0c0a1e 0%, #4c1d95 30%, #7c3aed 55%, #db2777 75%, #f97316 90%, #fbbf24 100%)',
+    svg: `<svg viewBox="0 0 400 200" preserveAspectRatio="xMidYMax slice" xmlns="http://www.w3.org/2000/svg">
+      <!-- sun rising -->
+      <circle cx="200" cy="105" r="28" fill="#fbbf24" opacity="0.9"/>
+      <circle cx="200" cy="118" r="22" fill="#f97316" opacity="0.6"/>
+      <!-- city skyline left -->
+      <rect x="0"   y="95"  width="30" height="75" fill="#111"/>
+      <rect x="30"  y="110" width="25" height="60" fill="#111"/>
+      <rect x="55"  y="100" width="20" height="70" fill="#111"/>
+      <rect x="75"  y="115" width="30" height="55" fill="#111"/>
+      <rect x="105" y="105" width="18" height="65" fill="#111"/>
+      <!-- minaret left -->
+      <rect x="123" y="75" width="14" height="95" fill="#111"/>
+      <rect x="120" y="71" width="20" height="8" rx="2" fill="#111"/>
+      <!-- city skyline right -->
+      <rect x="255" y="105" width="18" height="65" fill="#111"/>
+      <!-- minaret right -->
+      <rect x="273" y="72" width="14" height="98" fill="#111"/>
+      <rect x="270" y="68" width="20" height="8" rx="2" fill="#111"/>
+      <rect x="287" y="110" width="25" height="60" fill="#111"/>
+      <rect x="312" y="100" width="30" height="70" fill="#111"/>
+      <rect x="342" y="115" width="28" height="55" fill="#111"/>
+      <rect x="370" y="108" width="30" height="62" fill="#111"/>
+      <!-- river -->
+      <rect x="0" y="158" width="400" height="42" fill="#1e3a5f" opacity="0.85"/>
+      <!-- dawn reflections on water -->
+      <ellipse cx="200" cy="170" rx="50" ry="8" fill="#fbbf24" opacity="0.25"/>
+      <ellipse cx="200" cy="180" rx="80" ry="6" fill="#db2777" opacity="0.15"/>
+    </svg>`,
+  },
+  {
+    // ④ Patio en flor — Spring patio with flowers
+    label: 'Los Patios de Córdoba en primavera',
+    bg: 'linear-gradient(160deg, #052e16 0%, #14532d 25%, #166534 45%, #4ade80 70%, #bbf7d0 100%)',
+    svg: `<svg viewBox="0 0 400 200" preserveAspectRatio="xMidYMax slice" xmlns="http://www.w3.org/2000/svg">
+      <!-- patio walls -->
+      <rect x="0"   y="0" width="12"  height="200" fill="#111" opacity="0.7"/>
+      <rect x="388" y="0" width="12"  height="200" fill="#111" opacity="0.7"/>
+      <rect x="0"   y="0" width="400" height="12"  fill="#111" opacity="0.7"/>
+      <!-- arch openings in wall -->
+      <path d="M50 200 L50 120 Q100 60 150 120 L150 200Z" fill="#052e16" opacity="0.9"/>
+      <path d="M150 200 L150 120 Q200 60 250 120 L250 200Z" fill="#052e16" opacity="0.9"/>
+      <path d="M250 200 L250 120 Q300 60 350 120 L350 200Z" fill="#052e16" opacity="0.9"/>
+      <!-- fountain -->
+      <ellipse cx="200" cy="168" rx="30" ry="12" fill="#0369a1" opacity="0.6"/>
+      <rect x="196" y="130" width="8" height="40" fill="#374151"/>
+      <ellipse cx="200" cy="128" rx="18" ry="7" fill="#374151"/>
+      <!-- flower pots scattered -->
+      <circle cx="40"  cy="175" r="8" fill="#ef4444" opacity="0.9"/>
+      <circle cx="60"  cy="165" r="6" fill="#f97316" opacity="0.9"/>
+      <circle cx="340" cy="175" r="8" fill="#ec4899" opacity="0.9"/>
+      <circle cx="360" cy="162" r="6" fill="#f43f5e" opacity="0.9"/>
+      <circle cx="110" cy="185" r="7" fill="#ef4444" opacity="0.85"/>
+      <circle cx="290" cy="185" r="7" fill="#ec4899" opacity="0.85"/>
+      <!-- hanging flowers left wall -->
+      <circle cx="25" cy="50"  r="5" fill="#ef4444" opacity="0.8"/>
+      <circle cx="25" cy="80"  r="4" fill="#f97316" opacity="0.8"/>
+      <circle cx="25" cy="110" r="5" fill="#ec4899" opacity="0.8"/>
+      <!-- hanging flowers right wall -->
+      <circle cx="375" cy="60"  r="4" fill="#ec4899" opacity="0.8"/>
+      <circle cx="375" cy="90"  r="5" fill="#ef4444" opacity="0.8"/>
+      <circle cx="375" cy="120" r="4" fill="#f97316" opacity="0.8"/>
+      <!-- tiles floor -->
+      <rect x="0" y="190" width="400" height="10" fill="#b45309" opacity="0.5"/>
+    </svg>`,
+  },
+  {
+    // ⑤ Interior Mezquita — iconic red & white striped arches
+    label: 'Interior de la Mezquita-Catedral',
+    bg: 'linear-gradient(180deg, #1c0505 0%, #450a0a 35%, #7f1d1d 65%, #b91c1c 100%)',
+    svg: `<svg viewBox="0 0 400 200" preserveAspectRatio="xMidYMax slice" xmlns="http://www.w3.org/2000/svg">
+      <!-- columns -->
+      <rect x="38"  y="90" width="16" height="110" fill="#374151"/>
+      <rect x="118" y="90" width="16" height="110" fill="#374151"/>
+      <rect x="198" y="90" width="16" height="110" fill="#374151"/>
+      <rect x="278" y="90" width="16" height="110" fill="#374151"/>
+      <rect x="358" y="90" width="16" height="110" fill="#374151"/>
+      <!-- capitals -->
+      <rect x="33"  y="85" width="26" height="10" rx="3" fill="#6b7280"/>
+      <rect x="113" y="85" width="26" height="10" rx="3" fill="#6b7280"/>
+      <rect x="193" y="85" width="26" height="10" rx="3" fill="#6b7280"/>
+      <rect x="273" y="85" width="26" height="10" rx="3" fill="#6b7280"/>
+      <rect x="353" y="85" width="26" height="10" rx="3" fill="#6b7280"/>
+      <!-- arch 1: red/white voussoirs -->
+      <path d="M54 90 Q98 20 134 90" fill="none" stroke="#991b1b" stroke-width="28" stroke-linecap="butt"/>
+      <path d="M54 90 Q98 38 134 90" fill="none" stroke="#f0ede6" stroke-width="18" stroke-linecap="butt"/>
+      <path d="M54 90 Q98 56 134 90" fill="none" stroke="#991b1b" stroke-width="10" stroke-linecap="butt"/>
+      <!-- arch 2 -->
+      <path d="M134 90 Q176 20 214 90" fill="none" stroke="#991b1b" stroke-width="28" stroke-linecap="butt"/>
+      <path d="M134 90 Q176 38 214 90" fill="none" stroke="#f0ede6" stroke-width="18" stroke-linecap="butt"/>
+      <path d="M134 90 Q176 56 214 90" fill="none" stroke="#991b1b" stroke-width="10" stroke-linecap="butt"/>
+      <!-- arch 3 -->
+      <path d="M214 90 Q256 20 294 90" fill="none" stroke="#991b1b" stroke-width="28" stroke-linecap="butt"/>
+      <path d="M214 90 Q256 38 294 90" fill="none" stroke="#f0ede6" stroke-width="18" stroke-linecap="butt"/>
+      <path d="M214 90 Q256 56 294 90" fill="none" stroke="#991b1b" stroke-width="10" stroke-linecap="butt"/>
+      <!-- arch 4 -->
+      <path d="M294 90 Q336 20 374 90" fill="none" stroke="#991b1b" stroke-width="28" stroke-linecap="butt"/>
+      <path d="M294 90 Q336 38 374 90" fill="none" stroke="#f0ede6" stroke-width="18" stroke-linecap="butt"/>
+      <path d="M294 90 Q336 56 374 90" fill="none" stroke="#991b1b" stroke-width="10" stroke-linecap="butt"/>
+      <!-- floor -->
+      <rect x="0" y="180" width="400" height="20" fill="#1c0505" opacity="0.9"/>
+      <!-- ambient light from above -->
+      <ellipse cx="200" cy="0" rx="120" ry="40" fill="#fbbf24" opacity="0.08"/>
+    </svg>`,
+  },
 ];
 
 interface WeatherData {
@@ -75,10 +246,9 @@ export default function StoryFeed({ allNews }: Props) {
   const [statsOpen, setStatsOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState('all');
   const [weather, setWeather] = useState<WeatherData | null>(null);
-  const [cordobaImage, setCordobaImage] = useState(
-    () => CORDOBA_IMAGES[Math.floor(Math.random() * CORDOBA_IMAGES.length)]
+  const [cordobaScene, setCordobaScene] = useState(
+    () => CORDOBA_SCENES[Math.floor(Math.random() * CORDOBA_SCENES.length)]
   );
-  const [imageError, setImageError] = useState(false);
   const [prefs, setPrefs] = useState<UserPrefs>(DEFAULT_PREFS);
   const [readingHistory, setReadingHistory] = useState<ReadingHistory>({});
   const [streakData, setStreakData] = useState<StreakData>({ count: 0, lastDate: '' });
@@ -361,14 +531,13 @@ export default function StoryFeed({ allNews }: Props) {
     displayedNewsRef.current = displayedNews;
   }, [displayedNews]);
 
-  // Pick a new (different) random Córdoba image each time the empty state appears
+  // Rotate to a different scene each time the empty state appears
   useEffect(() => {
     if (displayedNews.length !== 0) return;
-    setCordobaImage((prev) => {
-      const others = CORDOBA_IMAGES.filter((img) => img !== prev);
+    setCordobaScene((prev) => {
+      const others = CORDOBA_SCENES.filter((s) => s !== prev);
       return others[Math.floor(Math.random() * others.length)];
     });
-    setImageError(false);
   }, [displayedNews.length]);
 
   // Reset scroll position when category changes
@@ -542,35 +711,28 @@ export default function StoryFeed({ allNews }: Props) {
             </div>
           ) : (
             <>
-              {/* ── Hero image ── */}
-              <div className="relative shrink-0 overflow-hidden" style={{ height: '52vw', maxHeight: '260px' }}>
+              {/* ── Hero illustration (SVG scene, no external deps) ── */}
+              <div
+                className="relative shrink-0 overflow-hidden"
+                style={{ height: '52vw', maxHeight: '260px', background: cordobaScene.bg }}
+              >
                 {/* Auto-refresh progress bar */}
                 {refreshing && (
                   <div className="absolute top-0 left-0 right-0 h-0.5 z-10 overflow-hidden">
                     <div className="h-full bg-yellow-400 animate-pulse w-full" />
                   </div>
                 )}
-                {imageError ? (
-                  <div className="w-full h-full" style={{
-                    background: 'linear-gradient(160deg, #1a0a00 0%, #7c2d00 35%, #c2410c 60%, #f59e0b 85%, #fde68a 100%)',
-                  }}>
-                    <svg viewBox="0 0 400 200" className="absolute bottom-0 w-full" fill="#111" preserveAspectRatio="xMidYMax slice">
-                      <path d="M0 200 L0 140 Q50 80 100 140 L100 200Z"/>
-                      <path d="M90 200 L90 150 Q140 90 190 150 L190 200Z"/>
-                      <path d="M180 200 L180 150 Q230 90 280 150 L280 200Z"/>
-                      <path d="M270 200 L270 140 Q320 80 370 140 L370 200Z"/>
-                      <rect x="0" y="195" width="400" height="10"/>
-                    </svg>
-                  </div>
-                ) : (
-                  <img
-                    src={cordobaImage}
-                    alt="Córdoba"
-                    className="w-full h-full object-cover"
-                    onError={() => setImageError(true)}
-                  />
-                )}
-                <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black" />
+                {/* SVG scene */}
+                <div
+                  className="absolute inset-0"
+                  dangerouslySetInnerHTML={{ __html: cordobaScene.svg }}
+                />
+                {/* Vignette */}
+                <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/70" />
+                {/* Label (top-right) */}
+                <p className="absolute top-3 right-4 text-white/40 text-[10px] font-medium tracking-wide drop-shadow">
+                  {cordobaScene.label}
+                </p>
                 <div className="absolute bottom-4 left-5 flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-yellow-400 flex items-center justify-center shadow-lg shadow-yellow-400/30">
                     <svg className="w-5 h-5 text-black" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
