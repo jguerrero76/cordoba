@@ -75,7 +75,7 @@ export default function StoryFeed({ allNews }: Props) {
   const [statsOpen, setStatsOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState('all');
   const [weather, setWeather] = useState<WeatherData | null>(null);
-  const [cordobaImage] = useState(
+  const [cordobaImage, setCordobaImage] = useState(
     () => CORDOBA_IMAGES[Math.floor(Math.random() * CORDOBA_IMAGES.length)]
   );
   const [imageError, setImageError] = useState(false);
@@ -360,6 +360,16 @@ export default function StoryFeed({ allNews }: Props) {
     visibleNewsLengthRef.current = displayedNews.length;
     displayedNewsRef.current = displayedNews;
   }, [displayedNews]);
+
+  // Pick a new (different) random Córdoba image each time the empty state appears
+  useEffect(() => {
+    if (displayedNews.length !== 0) return;
+    setCordobaImage((prev) => {
+      const others = CORDOBA_IMAGES.filter((img) => img !== prev);
+      return others[Math.floor(Math.random() * others.length)];
+    });
+    setImageError(false);
+  }, [displayedNews.length]);
 
   // Reset scroll position when category changes
   useEffect(() => {
