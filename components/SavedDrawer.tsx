@@ -6,7 +6,7 @@ interface Props {
   open: boolean;
   onClose: () => void;
   savedItems: NewsItem[];
-  onRemove: (id: string) => void;
+  onRemove: (item: NewsItem) => void;
 }
 
 export default function SavedDrawer({ open, onClose, savedItems, onRemove }: Props) {
@@ -103,7 +103,7 @@ export default function SavedDrawer({ open, onClose, savedItems, onRemove }: Pro
                 <div className="flex flex-col items-end justify-between shrink-0 gap-2">
                   {/* Remove */}
                   <button
-                    onClick={() => onRemove(item.id)}
+                    onClick={() => onRemove(item)}
                     aria-label="Quitar de guardados"
                     className="w-7 h-7 rounded-full bg-red-500/20 flex items-center justify-center active:scale-90 transition-transform"
                   >

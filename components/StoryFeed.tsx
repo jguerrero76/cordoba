@@ -8,12 +8,13 @@ import SavedDrawer from './SavedDrawer';
 import SettingsModal from './SettingsModal';
 import StatsModal from './StatsModal';
 
-const SEEN_KEY = 'cordoba_seen';
-const SAVED_KEY = 'cordoba_saved';
-const PREFS_KEY = 'cordoba_prefs';
-const STATS_KEY = 'cordoba_stats';
-const STREAK_KEY = 'cordoba_streak';
-const PULL_THRESHOLD = 75; // px needed to trigger refresh
+const SEEN_KEY        = 'cordoba_seen';
+const SAVED_KEY       = 'cordoba_saved';
+const SAVED_ITEMS_KEY = 'cordoba_saved_items'; // full NewsItem data for saved articles (persists across days)
+const PREFS_KEY       = 'cordoba_prefs';
+const STATS_KEY       = 'cordoba_stats';
+const STREAK_KEY      = 'cordoba_streak';
+const PULL_THRESHOLD  = 75; // px needed to trigger refresh
 
 // Wikimedia Commons — public-domain photos of Córdoba landmarks
 const CORDOBA_IMAGES = [
@@ -81,8 +82,11 @@ export default function StoryFeed({ allNews }: Props) {
   const [prefs, setPrefs] = useState<UserPrefs>(DEFAULT_PREFS);
   const [readingHistory, setReadingHistory] = useState<ReadingHistory>({});
   const [streakData, setStreakData] = useState<StreakData>({ count: 0, lastDate: '' });
+  // Persisted full item data so saved articles survive across days
+  const [savedItemsMap, setSavedItemsMap] = useState<Record<string, NewsItem>>({});
   const [pullDistance, setPullDistance] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
+  const [noNewNews, setNoNewNews] = useState(false);
   const [transitioning, setTransitioning] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -95,15 +99,21 @@ export default function StoryFeed({ allNews }: Props) {
   const pullDistanceRef = useRef(0);
   const visibleNewsLengthRef = useRef(0);
   const displayedNewsRef = useRef<NewsItem[]>([]);
+  const allNewsRef = useRef(allNews);
+  const hasAutoRefreshed = useRef(false);
 
   // ── Hydrate from localStorage ──
   useEffect(() => {
     const seen = new Set<string>(JSON.parse(localStorage.getItem(SEEN_KEY) || '[]'));
     const saved = new Set<string>(JSON.parse(localStorage.getItem(SAVED_KEY) || '[]'));
+    const savedItemsData: Record<string, NewsItem> = JSON.parse(localStorage.getItem(SAVED_ITEMS_KEY) || '{}');
     const savedPrefs: UserPrefs = { ...DEFAULT_PREFS, ...JSON.parse(localStorage.getItem(PREFS_KEY) || '{}') };
     const history: ReadingHistory = JSON.parse(localStorage.getItem(STATS_KEY) || '{}');
     const streak: StreakData = JSON.parse(localStorage.getItem(STREAK_KEY) || '{"count":0,"lastDate":""}');
+    // Merge: today's articles take priority over persisted data (fresher imageUrl etc.)
+    allNews.forEach((n) => { if (saved.has(n.id)) savedItemsData[n.id] = n; });
     setSavedIds(saved);
+    setSavedItemsMap(savedItemsData);
     setPrefs(savedPrefs);
     setReadingHistory(history);
     setStreakData(streak);
@@ -112,6 +122,9 @@ export default function StoryFeed({ allNews }: Props) {
     setVisibleNews(filtered);
     setReady(true);
   }, [allNews]);
+
+  // Keep allNewsRef in sync for callbacks
+  useEffect(() => { allNewsRef.current = allNews; }, [allNews]);
 
   // ── Fetch Córdoba weather once on mount ──
   useEffect(() => {
@@ -279,10 +292,25 @@ export default function StoryFeed({ allNews }: Props) {
     };
   }, [ready, router]);
 
-  const toggleSave = useCallback((id: string) => {
+  const toggleSave = useCallback((item: NewsItem) => {
     setSavedIds((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(item.id)) {
+        next.delete(item.id);
+        setSavedItemsMap((m) => {
+          const nm = { ...m };
+          delete nm[item.id];
+          localStorage.setItem(SAVED_ITEMS_KEY, JSON.stringify(nm));
+          return nm;
+        });
+      } else {
+        next.add(item.id);
+        setSavedItemsMap((m) => {
+          const nm = { ...m, [item.id]: item };
+          localStorage.setItem(SAVED_ITEMS_KEY, JSON.stringify(nm));
+          return nm;
+        });
+      }
       localStorage.setItem(SAVED_KEY, JSON.stringify([...next]));
       return next;
     });
@@ -298,9 +326,10 @@ export default function StoryFeed({ allNews }: Props) {
     setReadingHistory({ ...history });
   }, []);
 
+  // Saved items come from the persistent map — works across days
   const savedItems = useMemo(
-    () => allNews.filter((n) => savedIds.has(n.id)),
-    [allNews, savedIds]
+    () => Object.values(savedItemsMap).filter((n) => savedIds.has(n.id)),
+    [savedItemsMap, savedIds]
   );
 
   // Apply user preferences (source toggles, image filter)
@@ -366,7 +395,40 @@ export default function StoryFeed({ allNews }: Props) {
     currentIndexRef.current = 0;
     setCurrentIndex(0);
     if (containerRef.current) containerRef.current.scrollTop = 0;
+    hasAutoRefreshed.current = false; // allow auto-refresh on next empty-state visit
   };
+
+  const handleRefresh = useCallback(() => {
+    setRefreshing(true);
+    setNoNewNews(false);
+    router.refresh();
+    setTimeout(() => {
+      setRefreshing(false);
+      const seen = new Set<string>(JSON.parse(localStorage.getItem(SEEN_KEY) || '[]'));
+      const hasNew = allNewsRef.current.some((n) => !seen.has(n.id));
+      if (!hasNew) {
+        setNoNewNews(true);
+        setTimeout(() => setNoNewNews(false), 4000);
+      }
+    }, 2500);
+  }, [router]);
+
+  // ── Auto-refresh once when the empty state is first reached ──
+  useEffect(() => {
+    if (!ready || displayedNews.length > 0 || hasAutoRefreshed.current) return;
+    hasAutoRefreshed.current = true;
+    setRefreshing(true);
+    router.refresh();
+    setTimeout(() => {
+      setRefreshing(false);
+      const seen = new Set<string>(JSON.parse(localStorage.getItem(SEEN_KEY) || '[]'));
+      const hasNew = allNewsRef.current.some((n) => !seen.has(n.id));
+      if (!hasNew) {
+        setNoNewNews(true);
+        setTimeout(() => setNoNewNews(false), 4000);
+      }
+    }, 2500);
+  }, [ready, displayedNews.length, router]);
 
   // ── Pull indicator ──
   const pullProgress = Math.min(pullDistance / PULL_THRESHOLD, 1);
@@ -433,9 +495,11 @@ export default function StoryFeed({ allNews }: Props) {
 
   if (displayedNews.length === 0) {
     const todayKey = new Date().toISOString().split('T')[0];
-    const viewsToday = readingHistory[todayKey]?.total ?? 0;
-    const readsToday = readingHistory[todayKey]?.reads ?? 0;
-    const isEmpty = allNews.length === 0;
+    const viewsToday   = readingHistory[todayKey]?.total ?? 0;
+    const readsToday   = readingHistory[todayKey]?.reads ?? 0;
+    const totalViews   = Object.values(readingHistory).reduce((s, d) => s + d.total, 0);
+    const activeDays   = Object.keys(readingHistory).length;
+    const isEmpty      = allNews.length === 0;
     const { emoji, label } = weather ? weatherInfo(weather.code) : { emoji: '🌡️', label: '' };
 
     return (
@@ -458,22 +522,28 @@ export default function StoryFeed({ allNews }: Props) {
                 </p>
               </div>
               <button
-                onClick={() => router.refresh()}
-                className="px-6 py-3 bg-yellow-400 text-black rounded-2xl font-bold text-sm active:scale-95 transition-transform"
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className="px-6 py-3 bg-yellow-400 text-black rounded-2xl font-bold text-sm active:scale-95 transition-transform disabled:opacity-70 flex items-center gap-2"
               >
-                Buscar nuevas noticias
+                {refreshing && <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />}
+                {refreshing ? 'Buscando...' : 'Buscar nuevas noticias'}
               </button>
             </div>
           ) : (
             <>
               {/* ── Hero image ── */}
               <div className="relative shrink-0 overflow-hidden" style={{ height: '52vw', maxHeight: '260px' }}>
+                {/* Auto-refresh progress bar */}
+                {refreshing && (
+                  <div className="absolute top-0 left-0 right-0 h-0.5 z-10 overflow-hidden">
+                    <div className="h-full bg-yellow-400 animate-pulse w-full" />
+                  </div>
+                )}
                 {imageError ? (
-                  /* CSS fallback: Córdoba sunset gradient */
                   <div className="w-full h-full" style={{
                     background: 'linear-gradient(160deg, #1a0a00 0%, #7c2d00 35%, #c2410c 60%, #f59e0b 85%, #fde68a 100%)',
                   }}>
-                    {/* Silhouette arch shapes */}
                     <svg viewBox="0 0 400 200" className="absolute bottom-0 w-full" fill="#111" preserveAspectRatio="xMidYMax slice">
                       <path d="M0 200 L0 140 Q50 80 100 140 L100 200Z"/>
                       <path d="M90 200 L90 150 Q140 90 190 150 L190 200Z"/>
@@ -490,9 +560,7 @@ export default function StoryFeed({ allNews }: Props) {
                     onError={() => setImageError(true)}
                   />
                 )}
-                {/* Gradient overlay */}
                 <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black" />
-                {/* ¡Al día! badge on image */}
                 <div className="absolute bottom-4 left-5 flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-yellow-400 flex items-center justify-center shadow-lg shadow-yellow-400/30">
                     <svg className="w-5 h-5 text-black" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
@@ -501,7 +569,9 @@ export default function StoryFeed({ allNews }: Props) {
                   </div>
                   <div>
                     <h1 className="text-white text-2xl font-black leading-none drop-shadow-lg">¡Al día!</h1>
-                    <p className="text-white/65 text-xs mt-0.5 drop-shadow">Has visto todas las noticias de hoy</p>
+                    <p className="text-white/65 text-xs mt-0.5 drop-shadow">
+                      {refreshing ? 'Buscando nuevas noticias…' : 'Has visto todas las noticias de hoy'}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -513,9 +583,7 @@ export default function StoryFeed({ allNews }: Props) {
                 {weather && (
                   <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center justify-between">
                     <div>
-                      <p className="text-white/35 text-[10px] font-semibold uppercase tracking-widest mb-2">
-                        Córdoba ahora
-                      </p>
+                      <p className="text-white/35 text-[10px] font-semibold uppercase tracking-widest mb-2">Córdoba ahora</p>
                       <div className="flex items-baseline gap-2">
                         <span className="text-white text-4xl font-black">{weather.temp}°</span>
                         <span className="text-white/50 text-sm">{label}</span>
@@ -528,35 +596,75 @@ export default function StoryFeed({ allNews }: Props) {
                   </div>
                 )}
 
-                {/* Stats */}
-                <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center justify-around">
-                  <div className="text-center">
-                    <p className="text-yellow-400 text-2xl font-black">{viewsToday}</p>
-                    <p className="text-white/35 text-[11px] mt-0.5">vistas hoy</p>
+                {/* Today's stats */}
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
+                  <p className="text-white/35 text-[10px] font-semibold uppercase tracking-widest mb-3">Hoy</p>
+                  <div className="flex items-center justify-around">
+                    <div className="text-center">
+                      <p className="text-yellow-400 text-2xl font-black">{viewsToday}</p>
+                      <p className="text-white/35 text-[11px] mt-0.5">vistas</p>
+                    </div>
+                    <div className="w-px h-8 bg-white/10" />
+                    <div className="text-center">
+                      <p className="text-yellow-400 text-2xl font-black">{readsToday}</p>
+                      <p className="text-white/35 text-[11px] mt-0.5">leídas</p>
+                    </div>
+                    <div className="w-px h-8 bg-white/10" />
+                    <div className="text-center">
+                      <p className="text-yellow-400 text-2xl font-black">{savedItems.length}</p>
+                      <p className="text-white/35 text-[11px] mt-0.5">guardadas</p>
+                    </div>
                   </div>
-                  <div className="w-px h-8 bg-white/10" />
-                  <div className="text-center">
-                    <p className="text-yellow-400 text-2xl font-black">{readsToday}</p>
-                    <p className="text-white/35 text-[11px] mt-0.5">leídas hoy</p>
-                  </div>
-                  <div className="w-px h-8 bg-white/10" />
-                  <div className="text-center">
-                    <p className="text-yellow-400 text-2xl font-black">{savedItems.length}</p>
-                    <p className="text-white/35 text-[11px] mt-0.5">guardadas</p>
-                  </div>
+
+                  {/* Historical totals */}
+                  {activeDays > 0 && (
+                    <>
+                      <div className="border-t border-white/8 mt-4 pt-3">
+                        <p className="text-white/35 text-[10px] font-semibold uppercase tracking-widest mb-3">Total histórico</p>
+                        <div className="flex items-center justify-around">
+                          <div className="text-center">
+                            <p className="text-white/70 text-xl font-black">{totalViews}</p>
+                            <p className="text-white/30 text-[10px] mt-0.5">noticias vistas</p>
+                          </div>
+                          <div className="w-px h-7 bg-white/10" />
+                          <div className="text-center">
+                            <p className="text-white/70 text-xl font-black">{streakData.count}</p>
+                            <p className="text-white/30 text-[10px] mt-0.5">días de racha 🔥</p>
+                          </div>
+                          <div className="w-px h-7 bg-white/10" />
+                          <div className="text-center">
+                            <p className="text-white/70 text-xl font-black">{activeDays}</p>
+                            <p className="text-white/30 text-[10px] mt-0.5">días activo</p>
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
+
+                {/* No-new-news toast (inline) */}
+                {noNewNews && (
+                  <div className="bg-white/8 border border-white/15 rounded-2xl px-4 py-3 text-center">
+                    <p className="text-white/60 text-sm">No hay nuevas noticias aún. Vuelve en unos minutos.</p>
+                  </div>
+                )}
 
                 {/* Actions */}
                 <div className="flex flex-col gap-3">
                   <button
-                    onClick={() => router.refresh()}
-                    className="w-full py-4 bg-yellow-400 text-black rounded-2xl font-bold text-base active:scale-95 transition-transform flex items-center justify-center gap-2 shadow-lg shadow-yellow-400/20"
+                    onClick={handleRefresh}
+                    disabled={refreshing}
+                    className="w-full py-4 bg-yellow-400 text-black rounded-2xl font-bold text-base active:scale-95 transition-transform flex items-center justify-center gap-2 shadow-lg shadow-yellow-400/20 disabled:opacity-70"
                   >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round"
-                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                    Buscar nuevas noticias
+                    {refreshing ? (
+                      <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                    ) : (
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round"
+                          d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                    )}
+                    {refreshing ? 'Buscando...' : 'Buscar nuevas noticias'}
                   </button>
 
                   {savedItems.length > 0 && (
@@ -701,7 +809,7 @@ export default function StoryFeed({ allNews }: Props) {
             index={index}
             isLast={index === displayedNews.length - 1}
             isSaved={savedIds.has(item.id)}
-            onToggleSave={() => toggleSave(item.id)}
+            onToggleSave={() => toggleSave(item)}
             onRead={() => recordReadClick(item)}
             textSize={prefs.textSize}
           />
